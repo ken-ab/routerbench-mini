@@ -1,0 +1,28 @@
+[project]
+name = "routerbench-mini"
+version = "0.1.0"
+description = "Cost-aware model routing benchmark for multimodal agents."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "pyyaml>=6.0",
+  "requests>=2.31",
+  "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+data = [
+  "datasets>=2.18",
+  "pillow>=10.0",
+]
+ml = [
+  "scikit-learn>=1.4",
+]
+test = [
+  "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+

@@ -1,0 +1,28 @@
+# Copy this file to configs/models.qwen_api.yaml and replace env var names
+# if your provider uses different names.
+providers:
+  cheap_text:
+    type: openai_compatible
+    role: cheap_text
+    model: qwen3-8b
+    api_key_env: QWEN_API_KEY
+    base_url_env: QWEN_BASE_URL
+  strong_text:
+    type: openai_compatible
+    role: strong_text
+    model: qwen3-32b
+    api_key_env: QWEN_API_KEY
+    base_url_env: QWEN_BASE_URL
+  cheap_vlm:
+    type: openai_compatible
+    role: cheap_vlm
+    model: qwen3-vl-8b
+    api_key_env: QWEN_API_KEY
+    base_url_env: QWEN_BASE_URL
+  strong_vlm:
+    type: openai_compatible
+    role: strong_vlm
+    model: qwen3-vl-32b
+    api_key_env: QWEN_API_KEY
+    base_url_env: QWEN_BASE_URL
+
