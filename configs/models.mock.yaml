@@ -1,18 +1,7 @@
 providers:
-  cheap_text:
+  cheap:
     type: mock
-    model: qwen3-8b-mock
-    role: cheap_text
-  strong_text:
+    model: qwen3.5-35b-a3b-mock
+  strong:
     type: mock
-    model: qwen3-32b-mock
-    role: strong_text
-  cheap_vlm:
-    type: mock
-    model: qwen3-vl-8b-mock
-    role: cheap_vlm
-  strong_vlm:
-    type: mock
-    model: qwen3-vl-32b-mock
-    role: strong_vlm
-
+    model: qwen3.5-397b-a17b-mock

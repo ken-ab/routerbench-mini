@@ -5,7 +5,12 @@ from routerbench_mini.tasks import TaskExample
 from routerbench_mini.verifiers import verify_response
 
 
-def _response(answer: str, confidence: float = 0.9, role: str = "cheap_text") -> ModelResponse:
+def _response(
+    answer: str,
+    confidence: float = 0.9,
+    role: str = "cheap",
+    self_check_pass: bool = True,
+) -> ModelResponse:
     return ModelResponse(
         role=role,
         model=f"{role}-unit",
@@ -13,6 +18,7 @@ def _response(answer: str, confidence: float = 0.9, role: str = "cheap_text") ->
         raw_text=answer,
         confidence=confidence,
         latency_ms=1.0,
+        metadata={"self_check_pass": self_check_pass},
     )
 
 
@@ -53,7 +59,7 @@ def test_verifier_flags_missing_required_tool_arguments() -> None:
     assert result.features["missing_required_args"] == ["city"]
 
 
-def test_verifier_escalates_text_model_on_vision_task() -> None:
+def test_verifier_escalates_failed_self_check() -> None:
     task = TaskExample(
         id="vqa-1",
         dataset="unit",
@@ -64,8 +70,8 @@ def test_verifier_escalates_text_model_on_vision_task() -> None:
         metadata={"has_image": True},
     )
 
-    result = verify_response(task, _response("A", confidence=0.95, role="cheap_text"))
+    result = verify_response(task, _response("A", confidence=0.95, self_check_pass=False))
 
     assert result.valid_format
     assert result.should_escalate
-    assert "vision_task_answered_by_text_model" in result.reason
+    assert "self_check_failed" in result.reason

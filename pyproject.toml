@@ -18,6 +18,9 @@ data = [
 ml = [
   "scikit-learn>=1.4",
 ]
+analysis = [
+  "matplotlib>=3.9",
+]
 test = [
   "pytest>=8.0",
 ]
@@ -25,4 +28,3 @@ test = [
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
-

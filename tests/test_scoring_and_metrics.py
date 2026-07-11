@@ -27,21 +27,36 @@ def test_tool_scoring_accepts_required_arguments_with_extra_fields() -> None:
     assert is_correct(task, response)
 
 
-def test_oracle_decision_cost_reports_selected_model_cost_only() -> None:
+def test_decision_cost_uses_measured_api_costs() -> None:
     response = ModelResponse(
-        role="strong_text",
+        role="strong",
         model="strong",
         answer="42",
         raw_text="42",
         confidence=1.0,
         latency_ms=1200.0,
+        metadata={"cost": 0.012},
     )
     decision = RoutingDecision(
-        router="oracle",
-        selected_role="strong_text",
+        router="always_strong",
+        selected_role="strong",
         response=response,
-        calls=["cheap_text", "strong_text"],
-        escalated=True,
+        calls=["strong"],
+        responses=[response],
     )
 
-    assert decision_cost(decision, {"cheap_text": 1.0, "strong_text": 8.0}) == 8.0
+    assert decision_cost(decision, {"cheap": 1.0, "strong": 3.0}) == 0.012
+
+
+def test_open_vqa_scoring_accepts_numeric_tolerance() -> None:
+    task = TaskExample(
+        id="chart-1",
+        dataset="chartqa",
+        task_type="vqa",
+        question="What value is shown?",
+        answer="100",
+        image_path="chart.png",
+    )
+
+    assert is_correct(task, "104")
+    assert not is_correct(task, "110")

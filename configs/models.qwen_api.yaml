@@ -1,5 +1,3 @@
-# Prices are CNY per million tokens for requests up to 128K. Verify the
-# current price in your deployment region before reproducing cost results.
 providers:
   cheap:
     type: openai_compatible

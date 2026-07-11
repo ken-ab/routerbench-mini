@@ -15,13 +15,16 @@ class RoutingDecision:
     selected_role: str
     response: ModelResponse
     calls: list[str]
+    responses: list[ModelResponse] = field(default_factory=list)
     escalated: bool = False
     verification: VerificationResult | None = None
     trace: dict[str, Any] = field(default_factory=dict)
 
     @property
     def latency_ms(self) -> float:
-        return float(self.trace.get("latency_ms", self.response.latency_ms))
+        if self.responses:
+            return sum(response.latency_ms for response in self.responses)
+        return self.response.latency_ms
 
 
 class BaseRouter:
@@ -35,127 +38,123 @@ class AlwaysCheapRouter(BaseRouter):
     name = "always_cheap"
 
     def route(self, task: TaskExample, providers: dict[str, Provider]) -> RoutingDecision:
-        role = "cheap_vlm" if task.requires_vision else "cheap_text"
-        response = providers[role].generate(task)
-        return RoutingDecision(router=self.name, selected_role=role, response=response, calls=[role])
+        response = providers["cheap"].generate(task)
+        return RoutingDecision(
+            router=self.name,
+            selected_role="cheap",
+            response=response,
+            calls=["cheap"],
+            responses=[response],
+        )
 
 
 class AlwaysStrongRouter(BaseRouter):
     name = "always_strong"
 
     def route(self, task: TaskExample, providers: dict[str, Provider]) -> RoutingDecision:
-        role = "strong_vlm" if task.requires_vision else "strong_text"
-        response = providers[role].generate(task)
-        return RoutingDecision(router=self.name, selected_role=role, response=response, calls=[role])
+        response = providers["strong"].generate(task)
+        return RoutingDecision(
+            router=self.name,
+            selected_role="strong",
+            response=response,
+            calls=["strong"],
+            responses=[response],
+        )
 
 
-class RuleBasedRouter(BaseRouter):
-    name = "rule_based"
+class TaskAwareRouter(BaseRouter):
+    name = "task_aware"
 
     def route(self, task: TaskExample, providers: dict[str, Provider]) -> RoutingDecision:
-        if task.requires_vision:
-            role = "cheap_vlm"
-        elif task.task_type in {"math", "tool"}:
-            role = "strong_text"
-        else:
-            role = "cheap_text"
+        role = "strong" if task.metadata.get("rule_tier") == "strong" else "cheap"
         response = providers[role].generate(task)
-        return RoutingDecision(router=self.name, selected_role=role, response=response, calls=[role])
+        return RoutingDecision(
+            router=self.name,
+            selected_role=role,
+            response=response,
+            calls=[role],
+            responses=[response],
+            trace={"rule_tier": task.metadata.get("rule_tier", "cheap")},
+        )
 
 
-class SelectiveEscalationRouter(BaseRouter):
-    name = "selective_escalation"
+class ReflectionRouter(BaseRouter):
+    name = "reflection"
 
     def __init__(self, confidence_threshold: float = 0.55) -> None:
         self.confidence_threshold = confidence_threshold
 
     def route(self, task: TaskExample, providers: dict[str, Provider]) -> RoutingDecision:
-        cheap_role = "cheap_vlm" if task.requires_vision else "cheap_text"
-        strong_role = "strong_vlm" if task.requires_vision else "strong_text"
-
-        cheap_response = providers[cheap_role].generate(task)
-        verification = verify_response(task, cheap_response, confidence_threshold=self.confidence_threshold)
-        calls = [cheap_role, "verifier"]
-        latency_ms = cheap_response.latency_ms
-
+        cheap_response = providers["cheap"].generate(task)
+        verification = verify_response(
+            task,
+            cheap_response,
+            confidence_threshold=self.confidence_threshold,
+        )
         if verification.should_escalate:
-            strong_response = providers[strong_role].generate(task)
-            calls.append(strong_role)
-            latency_ms += strong_response.latency_ms
+            strong_response = providers["strong"].generate(task)
             return RoutingDecision(
                 router=self.name,
-                selected_role=strong_role,
+                selected_role="strong",
                 response=strong_response,
-                calls=calls,
+                calls=["cheap", "verifier", "strong"],
+                responses=[cheap_response, strong_response],
                 escalated=True,
                 verification=verification,
-                trace={"cheap_answer": cheap_response.answer, "latency_ms": latency_ms},
+                trace={"cheap_answer": cheap_response.answer},
             )
-
         return RoutingDecision(
             router=self.name,
-            selected_role=cheap_role,
+            selected_role="cheap",
             response=cheap_response,
-            calls=calls,
+            calls=["cheap", "verifier"],
+            responses=[cheap_response],
             escalated=False,
             verification=verification,
-            trace={"latency_ms": latency_ms},
         )
 
 
 class OracleRouter(BaseRouter):
+    """Post-hoc diagnostic upper bound; excluded from the four headline methods."""
+
     name = "oracle"
 
     def __init__(self, costs: dict[str, float]) -> None:
         self.costs = costs
 
     def route(self, task: TaskExample, providers: dict[str, Provider]) -> RoutingDecision:
-        candidate_roles = ["cheap_vlm", "strong_vlm"] if task.requires_vision else ["cheap_text", "strong_text"]
-        candidate_roles = sorted(candidate_roles, key=lambda role: self.costs.get(role, 999.0))
-
-        calls: list[str] = []
-        first_response: ModelResponse | None = None
-        latency_ms = 0.0
-        for role in candidate_roles:
+        responses: list[ModelResponse] = []
+        for role in sorted(("cheap", "strong"), key=lambda value: self.costs.get(value, 999.0)):
             response = providers[role].generate(task)
-            calls.append(role)
-            latency_ms += response.latency_ms
-            if first_response is None:
-                first_response = response
+            responses.append(response)
             if is_correct(task, response):
                 return RoutingDecision(
                     router=self.name,
                     selected_role=role,
                     response=response,
-                    calls=calls,
-                    escalated=len(calls) > 1,
-                    trace={
-                        "latency_ms": response.latency_ms,
-                        "oracle_candidate_latency_ms": latency_ms,
-                        "oracle_found_correct": True,
-                    },
+                    calls=[item.role for item in responses],
+                    responses=responses,
+                    escalated=len(responses) > 1,
+                    trace={"oracle_found_correct": True},
                 )
-
-        assert first_response is not None
         return RoutingDecision(
             router=self.name,
-            selected_role=candidate_roles[-1],
-            response=response,
-            calls=calls,
-            escalated=len(calls) > 1,
-            trace={
-                "latency_ms": response.latency_ms,
-                "oracle_candidate_latency_ms": latency_ms,
-                "oracle_found_correct": False,
-            },
+            selected_role="strong",
+            response=responses[-1],
+            calls=[item.role for item in responses],
+            responses=responses,
+            escalated=True,
+            trace={"oracle_found_correct": False},
         )
 
 
-def default_routers(costs: dict[str, float]) -> list[BaseRouter]:
+def default_routers(
+    costs: dict[str, float] | None = None,
+    confidence_threshold: float = 0.55,
+) -> list[BaseRouter]:
     return [
         AlwaysCheapRouter(),
         AlwaysStrongRouter(),
-        RuleBasedRouter(),
-        SelectiveEscalationRouter(),
-        OracleRouter(costs=costs),
+        TaskAwareRouter(),
+        ReflectionRouter(confidence_threshold=confidence_threshold),
     ]

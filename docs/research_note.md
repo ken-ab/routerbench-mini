@@ -1,63 +1,61 @@
 # RouterBench-Mini Research Note
 
-## Question
+## Research Question
 
-The project studies a practical model-reuse question:
+Can a lightweight router reuse a cheaper multimodal foundation model on easy tasks and selectively invoke a stronger model while preserving accuracy under cost and latency constraints?
 
-> Can lightweight routing and verification signals decide when a cheap model is sufficient and when an agent should escalate to a stronger LLM or VLM?
+The study deliberately uses two models from the same Qwen 3.5 family. Both models support text, vision, and tools. This controls for provider and interface differences and makes model capacity, task difficulty, and routing policy the variables of interest.
 
-This is not intended to be a paper-scale benchmark. It is a small, reproducible RA-application project showing competence in model routing, multimodal agents, efficient inference, and evaluation design.
+## Protocol
 
-## Task Mix
+- Dataset: 300 examples, balanced across text, vision, and tool use.
+- Split: stratified 60-example validation set and 240-example held-out test set, seed 42.
+- Cheap model: `qwen3.5-35b-a3b`.
+- Strong model: `qwen3.5-397b-a17b`.
+- Shared decoding: temperature 0, maximum output 256 tokens, thinking disabled.
+- Shared interface: one prompt contract, JSON responses for reasoning/VQA, native function calling for tools.
+- Metrics: accuracy, measured API token cost, observed end-to-end latency, escalation rate, and strong-model usage.
+- Threshold selection: choose the lowest-cost reflection threshold within two percentage points of Always Strong validation accuracy; if none qualifies, choose the most accurate threshold and break ties by cost.
 
-The planned full manifest contains three task families:
+The test split is used once after selecting the Reflection Router threshold on validation. API responses are cached by model, task, prompt version, and decoding configuration.
 
-1. Text reasoning: GSM8K, evaluated by final numeric exact match.
-2. Multimodal question answering: image-grounded ScienceQA, evaluated by multiple-choice accuracy.
-3. Agentic tool use: BFCL-style function calling, evaluated by function name and required argument match.
+## Headline Test Results
 
-The included `data/mini_manifest.jsonl` is a tiny smoke-test set. Use `scripts/build_manifest.py` to build a larger manifest from public datasets.
+| Method | Accuracy | Avg. cost/task (CNY) | Avg. latency (ms) | Strong usage |
+|---|---:|---:|---:|---:|
+| Always Cheap | 0.8000 | 0.00023496 | 707.13 | 0.0000 |
+| Always Strong | **0.8167** | 0.00063335 | 1411.50 | 1.0000 |
+| Task-Aware Router | 0.8125 | 0.00044290 | 1062.50 | 0.4917 |
+| Reflection Router | 0.7875 | 0.00057631 | 1316.75 | 0.3333 |
 
-## Model Pool
+Task-Aware routing is the best observed trade-off. It saves 30.1% API cost and 24.7% latency relative to Always Strong while losing only 0.42 percentage points of accuracy.
 
-The benchmark uses roles rather than hard-coded model names:
+## Category Findings
 
-- `cheap_text`: Qwen3-8B or another low-cost text model.
-- `strong_text`: Qwen3-32B, Qwen3-Max, or another stronger text model.
-- `cheap_vlm`: Qwen3-VL-8B or another low-cost vision-language model.
-- `strong_vlm`: Qwen3-VL-32B/235B or another stronger VLM.
+- Text: the strong model improves over cheap from 70.00% to 76.25%; Task-Aware reaches 75.00%.
+- Vision: the strong model reaches 88.75%, but Task-Aware and cheap both reach 86.25%. The fixed vision difficulty rule did not recover the full strong-model gain.
+- Tool use: cheap reaches 83.75%, higher than strong at 80.00%. This is evidence that a larger model is not uniformly better under a strict function-call scoring contract.
 
-This keeps the experiment portable across local inference, DashScope, OpenRouter, vLLM, and other OpenAI-compatible APIs.
+Across the 240 test tasks, both models are correct on 183 tasks, the strong model fixes 13 cheap-model errors, the strong model regresses 9 cheap-model successes, and both fail on 35 tasks. The modest 13-task upside explains why indiscriminate strong-model use provides only a small aggregate accuracy gain.
 
-## Router Baselines
+## Why Reflection Failed
 
-1. `always_cheap`: use the cheapest compatible model.
-2. `always_strong`: use the strongest compatible model.
-3. `rule_based`: use a fixed human-written rule.
-4. `selective_escalation`: ask a cheap model first, verify its output format/confidence, then escalate only when needed.
-5. `oracle`: post-hoc upper bound that chooses the cheapest correct model.
+The selected confidence threshold is 0.80. Because tool-call responses do not expose a calibrated confidence value, their fallback confidence causes every test tool task to escalate, while high-confidence text and vision errors are often accepted. The resulting policy has:
 
-The main research comparison is whether `selective_escalation` approaches `always_strong` accuracy at much lower average cost.
+- 35 false accepts: the cheap answer is wrong but is not escalated.
+- 67 unnecessary escalations: the cheap answer is correct but the strong model is still called.
+- 51 total errors, compared with 44 for Always Strong and 45 for Task-Aware.
 
-## Metrics
+This is not evidence that reflection is intrinsically ineffective. It shows that self-reported confidence plus deterministic format checks is insufficiently calibrated for cross-task routing.
 
-The primary metrics are:
+## Interpretation
 
-- Accuracy
-- Average relative cost
-- Average latency
-- Escalation rate
+The central finding is not simply that one model is better. Strong-model advantage is sparse and task dependent. A small amount of task structure captures much of that advantage, whereas an uncalibrated generic confidence signal does not. For this model pair and benchmark, model selection benefits more from knowing the task than from asking the model how confident it feels.
 
-A useful result is not simply the highest accuracy. A useful result is a better accuracy-cost trade-off, such as retaining most of the strong model accuracy while using much less strong-model budget.
+## Limitations and Next Step
 
-## Suggested Ablations
+The benchmark is intentionally small and uses one provider and model family. The fixed rule tiers are hand-authored, BFCL scoring checks the first canonical function call and required arguments, and latency is sensitive to remote service load. Token prices are experiment inputs and may become stale.
 
-For the first real experiment, run these ablations:
+The next experiment should fit a calibrated router on validation data using task family, dataset, answer format validity, cheap-model confidence, and cheap-model latency. A logistic model or isotonic confidence calibrator would be sufficient; no large routing network is needed. It should then be frozen and evaluated on the same held-out test protocol.
 
-1. Remove confidence signal: escalate only on invalid format.
-2. Remove deterministic verifier: escalate only on model self-confidence.
-3. Change confidence threshold from 0.45 to 0.65.
-4. Compare `cheap_text -> strong_text` against `cheap_vlm -> strong_vlm` for image tasks.
-
-These ablations help answer which routing signals are actually useful.
-
+Raw summary tables, threshold sweeps, the Pareto plot, metadata, and error counts are stored under `results/qwen3.5-study/`.

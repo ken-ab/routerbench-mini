@@ -1,88 +1,170 @@
 from __future__ import annotations
 
 import argparse
+import json
+import random
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
+
+import requests
 
 from routerbench_mini.tasks import TaskExample, write_jsonl
 
 
+BBH_LOGIC_URL = (
+    "https://raw.githubusercontent.com/suzgunmirac/BIG-Bench-Hard/"
+    "main/bbh/logical_deduction_three_objects.json"
+)
+BFCL_DATA_ROOT = (
+    "https://raw.githubusercontent.com/ShishirPatil/gorilla/main/"
+    "berkeley-function-call-leaderboard/bfcl_eval/data"
+)
+
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Build RouterBench-Mini manifests from public datasets.")
+    parser = argparse.ArgumentParser(description="Build the 300-example RouterBench-Mini study dataset.")
     parser.add_argument("--out", default="data/manifest.jsonl")
-    parser.add_argument("--gsm8k", type=int, default=100, help="Number of GSM8K test examples.")
-    parser.add_argument("--scienceqa", type=int, default=100, help="Number of image-grounded ScienceQA examples.")
-    parser.add_argument("--bfcl-file", default=None, help="Optional local BFCL JSONL file for tool-use examples.")
-    parser.add_argument("--bfcl", type=int, default=100, help="Number of BFCL examples if --bfcl-file is provided.")
-    parser.add_argument("--save-images", action="store_true", help="Save ScienceQA images under data/images.")
+    parser.add_argument("--validation-out", default="data/validation.jsonl")
+    parser.add_argument("--test-out", default="data/test.jsonl")
+    parser.add_argument("--image-dir", default="data/images")
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--validation-ratio", type=float, default=0.20)
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    examples: list[TaskExample] = []
-    examples.extend(load_gsm8k(args.gsm8k))
-    examples.extend(load_scienceqa(args.scienceqa, save_images=args.save_images))
-    if args.bfcl_file:
-        examples.extend(load_bfcl_jsonl(args.bfcl_file, args.bfcl))
+    image_dir = Path(args.image_dir)
+    image_dir.mkdir(parents=True, exist_ok=True)
+
+    examples = [
+        *load_gsm8k(40, args.seed),
+        *load_commonsense_qa(30, args.seed),
+        *load_bbh_logic(30, args.seed),
+        *load_scienceqa(80, args.seed, image_dir),
+        *load_chartqa(10, args.seed, image_dir),
+        *load_ocr_vqa(10, image_dir),
+        *load_bfcl("simple_python", 50, args.seed),
+        *load_bfcl("multiple", 50, args.seed),
+    ]
+    _validate_counts(examples)
+    validation, test = stratified_split(examples, args.validation_ratio, args.seed)
+
     write_jsonl(args.out, examples)
+    write_jsonl(args.validation_out, validation)
+    write_jsonl(args.test_out, test)
     print(f"Wrote {len(examples)} examples to {args.out}")
+    print(f"Wrote {len(validation)} validation examples to {args.validation_out}")
+    print(f"Wrote {len(test)} test examples to {args.test_out}")
 
 
-def load_gsm8k(limit: int) -> list[TaskExample]:
+def load_gsm8k(limit: int, seed: int) -> list[TaskExample]:
     from datasets import load_dataset
 
-    dataset = load_dataset("openai/gsm8k", "main", split="test")
+    dataset = load_dataset("openai/gsm8k", "main", split="test").shuffle(seed=seed)
+    return [
+        TaskExample(
+            id=f"gsm8k-{idx:04d}",
+            dataset="gsm8k",
+            task_type="math",
+            question=row["question"],
+            answer=_extract_gsm8k_answer(row["answer"]),
+            metadata={
+                "source": "openai/gsm8k",
+                "category": "text",
+                "rule_tier": "strong",
+            },
+        )
+        for idx, row in enumerate(dataset.select(range(limit)))
+    ]
+
+
+def load_commonsense_qa(limit: int, seed: int) -> list[TaskExample]:
+    from datasets import load_dataset
+
+    dataset = load_dataset("tau/commonsense_qa", split="validation").shuffle(seed=seed)
     examples: list[TaskExample] = []
-    for idx, row in enumerate(dataset.select(range(min(limit, len(dataset))))):
-        answer = _extract_gsm8k_answer(row["answer"])
+    for idx, row in enumerate(dataset.select(range(limit))):
+        labels = list(row["choices"]["label"])
+        choices = list(row["choices"]["text"])
         examples.append(
             TaskExample(
-                id=f"gsm8k-{idx:04d}",
-                dataset="gsm8k",
-                task_type="math",
+                id=f"commonsenseqa-{idx:04d}",
+                dataset="commonsenseqa",
+                task_type="mcq",
                 question=row["question"],
-                answer=answer,
-                metadata={"source": "openai/gsm8k"},
+                answer=labels.index(row["answerKey"]),
+                choices=choices,
+                metadata={
+                    "source": "tau/commonsense_qa",
+                    "category": "text",
+                    "rule_tier": "cheap",
+                },
             )
         )
     return examples
 
 
-def load_scienceqa(limit: int, save_images: bool = False) -> list[TaskExample]:
+def load_bbh_logic(limit: int, seed: int) -> list[TaskExample]:
+    payload = _get_json(BBH_LOGIC_URL)
+    rows = list(payload["examples"])
+    random.Random(seed).shuffle(rows)
+    examples: list[TaskExample] = []
+    for idx, row in enumerate(rows[:limit]):
+        question, choices = _split_bbh_question(row["input"])
+        answer = ord(row["target"].strip("()")) - ord("A")
+        examples.append(
+            TaskExample(
+                id=f"bbh-logical-{idx:04d}",
+                dataset="bbh-logical-deduction",
+                task_type="mcq",
+                question=question,
+                answer=answer,
+                choices=choices,
+                metadata={
+                    "source": "BIG-Bench-Hard/logical_deduction_three_objects",
+                    "category": "text",
+                    "rule_tier": "strong",
+                },
+            )
+        )
+    return examples
+
+
+def load_scienceqa(limit: int, seed: int, image_dir: Path) -> list[TaskExample]:
     from datasets import load_dataset
 
-    dataset = load_dataset("derek-thomas/ScienceQA", split="test")
+    dataset = load_dataset("derek-thomas/ScienceQA", split="test").shuffle(seed=seed)
     examples: list[TaskExample] = []
-    image_dir = Path("data/images")
-    if save_images:
-        image_dir.mkdir(parents=True, exist_ok=True)
-
     for row in dataset:
         image = row.get("image")
-        if image is None:
-            continue
         choices = list(row.get("choices") or [])
-        answer_idx = int(row.get("answer"))
-        if not choices or answer_idx >= len(choices):
+        if image is None or not choices:
             continue
-
-        image_path = None
-        if save_images:
-            image_path = str(image_dir / f"scienceqa-{len(examples):04d}.png")
-            image.save(image_path)
-
+        image_path = image_dir / f"scienceqa-{len(examples):04d}.png"
+        image.convert("RGB").save(image_path, optimize=True)
+        hint = str(row.get("hint") or "").strip()
+        question = row.get("question", "")
+        if hint:
+            question = f"Context: {hint}\nQuestion: {question}"
         examples.append(
             TaskExample(
                 id=f"scienceqa-{len(examples):04d}",
                 dataset="scienceqa-img",
                 task_type="vqa",
-                question=row.get("question", ""),
-                answer=chr(65 + answer_idx),
+                question=question,
+                answer=int(row["answer"]),
                 choices=choices,
-                image_path=image_path,
-                metadata={"has_image": True, "source": "derek-thomas/ScienceQA"},
+                image_path=str(image_path),
+                metadata={
+                    "source": "derek-thomas/ScienceQA",
+                    "category": "vision",
+                    "vision_subtype": "scienceqa",
+                    "rule_tier": "cheap",
+                    "grade": row.get("grade"),
+                    "subject": row.get("subject"),
+                },
             )
         )
         if len(examples) >= limit:
@@ -90,38 +172,157 @@ def load_scienceqa(limit: int, save_images: bool = False) -> list[TaskExample]:
     return examples
 
 
-def load_bfcl_jsonl(path: str, limit: int) -> list[TaskExample]:
-    import json
+def load_chartqa(limit: int, seed: int, image_dir: Path) -> list[TaskExample]:
+    from datasets import load_dataset
 
+    dataset = load_dataset("docintel/ChartQA", split="test").shuffle(seed=seed)
     examples: list[TaskExample] = []
-    with Path(path).open("r", encoding="utf-8") as handle:
-        for line in handle:
-            if len(examples) >= limit:
-                break
-            row = json.loads(line)
-            converted = _convert_bfcl_row(row, len(examples))
-            if converted:
-                examples.append(converted)
+    for idx, row in enumerate(dataset.select(range(limit))):
+        image_path = image_dir / f"chartqa-{idx:04d}.png"
+        row["image"].convert("RGB").save(image_path, optimize=True)
+        examples.append(
+            TaskExample(
+                id=f"chartqa-{idx:04d}",
+                dataset="chartqa",
+                task_type="vqa",
+                question=row["question"],
+                answer=str(row["answer"]),
+                image_path=str(image_path),
+                metadata={
+                    "source": "docintel/ChartQA",
+                    "category": "vision",
+                    "vision_subtype": "chart",
+                    "rule_tier": "strong",
+                },
+            )
+        )
     return examples
 
 
-def _convert_bfcl_row(row: dict[str, Any], idx: int) -> TaskExample | None:
-    question = row.get("question") or row.get("prompt") or row.get("user_prompt")
-    tools = row.get("function") or row.get("tools") or row.get("functions")
-    answer = row.get("ground_truth") or row.get("answer") or row.get("reference")
-    if not question or not tools or not answer:
+def load_ocr_vqa(limit: int, image_dir: Path) -> list[TaskExample]:
+    from datasets import load_dataset
+
+    dataset = load_dataset("pppop7/OCR-VQA", split="train", streaming=True)
+    examples: list[TaskExample] = []
+    for row in dataset:
+        questions = list(row.get("questions") or [])
+        answers = list(row.get("answers") or [])
+        image = row.get("image")
+        if image is None or not questions or not answers:
+            continue
+        image_path = image_dir / f"ocr-vqa-{len(examples):04d}.jpg"
+        image.convert("RGB").save(image_path, quality=88, optimize=True)
+        examples.append(
+            TaskExample(
+                id=f"ocr-vqa-{len(examples):04d}",
+                dataset="ocr-vqa",
+                task_type="vqa",
+                question=str(questions[0]),
+                answer=str(answers[0]),
+                image_path=str(image_path),
+                metadata={
+                    "source": "pppop7/OCR-VQA",
+                    "category": "vision",
+                    "vision_subtype": "ocr",
+                    "rule_tier": "strong",
+                },
+            )
+        )
+        if len(examples) >= limit:
+            break
+    return examples
+
+
+def load_bfcl(category: str, limit: int, seed: int) -> list[TaskExample]:
+    data_name = f"BFCL_v4_{category}.json"
+    rows = _get_jsonl(f"{BFCL_DATA_ROOT}/{data_name}")
+    answers = {
+        row["id"]: row["ground_truth"]
+        for row in _get_jsonl(f"{BFCL_DATA_ROOT}/possible_answer/{data_name}")
+    }
+    random.Random(seed).shuffle(rows)
+    examples: list[TaskExample] = []
+    for row in rows:
+        ground_truth = answers.get(row["id"])
+        converted = _convert_bfcl_row(row, ground_truth, category, len(examples))
+        if converted is not None:
+            examples.append(converted)
+        if len(examples) >= limit:
+            break
+    return examples
+
+
+def _convert_bfcl_row(
+    row: dict[str, Any],
+    ground_truth: Any,
+    category: str,
+    idx: int,
+) -> TaskExample | None:
+    tools = list(row.get("function") or [])
+    question = _bfcl_question(row.get("question"))
+    answer = _canonical_bfcl_answer(ground_truth, tools)
+    if not question or not tools or answer is None:
         return None
-    if isinstance(tools, dict):
-        tools = [tools]
     return TaskExample(
-        id=f"bfcl-{idx:04d}",
-        dataset="bfcl",
+        id=f"bfcl-{category}-{idx:04d}",
+        dataset=f"bfcl-{category}",
         task_type="tool",
-        question=str(question),
+        question=question,
         answer=answer,
-        tools=list(tools),
-        metadata={"source": "bfcl_local_jsonl"},
+        tools=tools,
+        metadata={
+            "source": f"BFCL_v4_{category}",
+            "category": "tool",
+            "tool_subtype": "multiple" if category == "multiple" else "simple",
+            "rule_tier": "strong" if category == "multiple" else "cheap",
+        },
     )
+
+
+def stratified_split(
+    examples: list[TaskExample], validation_ratio: float, seed: int
+) -> tuple[list[TaskExample], list[TaskExample]]:
+    grouped: dict[str, list[TaskExample]] = {}
+    for example in examples:
+        grouped.setdefault(str(example.metadata["category"]), []).append(example)
+    validation: list[TaskExample] = []
+    test: list[TaskExample] = []
+    rng = random.Random(seed)
+    for category in sorted(grouped):
+        rows = grouped[category]
+        rng.shuffle(rows)
+        split_at = round(len(rows) * validation_ratio)
+        validation.extend(rows[:split_at])
+        test.extend(rows[split_at:])
+    rng.shuffle(validation)
+    rng.shuffle(test)
+    return validation, test
+
+
+def _validate_counts(examples: list[TaskExample]) -> None:
+    counts: dict[str, int] = {}
+    for example in examples:
+        category = str(example.metadata.get("category"))
+        counts[category] = counts.get(category, 0) + 1
+        if example.requires_vision and not example.image_path:
+            raise ValueError(f"Vision example {example.id} has no image path")
+        if example.image_path and not Path(example.image_path).exists():
+            raise ValueError(f"Missing image for {example.id}: {example.image_path}")
+    expected = {"text": 100, "vision": 100, "tool": 100}
+    if counts != expected:
+        raise ValueError(f"Unexpected category counts: {counts}; expected {expected}")
+
+
+def _get_json(url: str) -> dict[str, Any]:
+    response = requests.get(url, timeout=120)
+    response.raise_for_status()
+    return response.json()
+
+
+def _get_jsonl(url: str) -> list[dict[str, Any]]:
+    response = requests.get(url, timeout=120)
+    response.raise_for_status()
+    return [json.loads(line) for line in response.text.splitlines() if line.strip()]
 
 
 def _extract_gsm8k_answer(answer_text: str) -> str:
@@ -131,6 +332,50 @@ def _extract_gsm8k_answer(answer_text: str) -> str:
     return matches[-1] if matches else answer_text.strip()
 
 
+def _split_bbh_question(value: str) -> tuple[str, list[str]]:
+    question, option_block = value.rsplit("\nOptions:\n", 1)
+    choices = [re.sub(r"^\([A-Z]\)\s*", "", line) for line in option_block.splitlines() if line.strip()]
+    return question, choices
+
+
+def _bfcl_question(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if not isinstance(value, list):
+        return ""
+    for turn in _walk(value):
+        if isinstance(turn, dict) and turn.get("role") == "user" and turn.get("content"):
+            return str(turn["content"])
+    return ""
+
+
+def _walk(value: Iterable[Any]) -> Iterable[Any]:
+    for item in value:
+        if isinstance(item, list):
+            yield from _walk(item)
+        else:
+            yield item
+
+
+def _canonical_bfcl_answer(ground_truth: Any, tools: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not isinstance(ground_truth, list) or not ground_truth:
+        return None
+    call = ground_truth[0]
+    if not isinstance(call, dict) or not call:
+        return None
+    name, accepted_args = next(iter(call.items()))
+    tool = next((tool for tool in tools if tool.get("name") == name), None)
+    if tool is None or not isinstance(accepted_args, dict):
+        return None
+    required = set((tool.get("parameters") or {}).get("required") or [])
+    arguments: dict[str, Any] = {}
+    for key in required:
+        values = accepted_args.get(key)
+        if not isinstance(values, list) or not values:
+            return None
+        arguments[key] = next((value for value in values if value != ""), values[0])
+    return {"name": name, "arguments": arguments}
+
+
 if __name__ == "__main__":
     main()
-

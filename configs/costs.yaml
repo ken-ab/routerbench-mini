@@ -1,7 +1,4 @@
 roles:
-  cheap_text: 1.0
-  strong_text: 8.0
-  cheap_vlm: 2.0
-  strong_vlm: 12.0
-  verifier: 0.5
-
+  cheap: 1.0
+  strong: 3.0
+  verifier: 0.0

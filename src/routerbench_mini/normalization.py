@@ -6,7 +6,7 @@ from typing import Any
 
 
 NUMBER_RE = re.compile(r"-?\d+(?:\.\d+)?")
-CHOICE_RE = re.compile(r"\b([A-D])\b", re.IGNORECASE)
+CHOICE_RE = re.compile(r"\b([A-Z])\b", re.IGNORECASE)
 
 
 def extract_number(text: str) -> str | None:
@@ -72,9 +72,10 @@ def canonical_answer(task_type: str, answer: Any) -> Any:
         if isinstance(answer, (int, float)):
             return str(int(answer)) if float(answer).is_integer() else str(answer)
         return extract_number(str(answer)) or str(answer).strip()
-    if task_type == "vqa":
+    if task_type in {"mcq", "vqa"}:
+        if isinstance(answer, int):
+            return chr(65 + answer)
         return extract_choice(str(answer)) or str(answer).strip().upper()
     if task_type == "tool":
         return normalize_tool_call(answer)
     return str(answer).strip().lower()
-
