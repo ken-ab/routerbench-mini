@@ -30,6 +30,7 @@ study = [
 ]
 test = [
   "pytest>=8.0",
+  "scikit-learn>=1.4",
 ]
 
 [tool.pytest.ini_options]
