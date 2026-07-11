@@ -1,0 +1,13 @@
+category,router,total,accuracy,total_cost,avg_cost,avg_latency_ms,escalation_rate,strong_usage_rate
+text,always_cheap,80,0.6875,0.009477,0.00011846,690.3,0.0,0.0
+text,always_strong,80,0.7625,0.025242,0.00031552,1465.64,0.0,1.0
+text,reflection,80,0.6875,0.011245,0.00014056,763.99,0.05,0.05
+text,task_aware,80,0.7625,0.021744,0.0002718,1290.97,0.0,0.75
+tool,always_cheap,80,0.85,0.030853,0.00038566,968.46,0.0,0.0
+tool,always_strong,80,0.8,0.081923,0.00102403,1849.76,0.0,1.0
+tool,reflection,80,0.85,0.030853,0.00038566,968.46,0.0,0.0
+tool,task_aware,80,0.825,0.069326,0.00086657,1575.95,0.0,0.6875
+vision,always_cheap,80,0.7625,0.017667,0.00022084,1764.51,0.0,0.0
+vision,always_strong,80,0.775,0.049376,0.00061721,2033.33,0.0,1.0
+vision,reflection,80,0.7625,0.018527,0.00023159,1789.06,0.0125,0.0125
+vision,task_aware,80,0.8125,0.03471,0.00043387,1963.81,0.0,0.6125

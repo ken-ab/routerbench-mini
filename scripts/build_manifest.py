@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import ast
+import io
 import json
 import random
 import re
+import time
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -20,6 +23,29 @@ BFCL_DATA_ROOT = (
     "https://raw.githubusercontent.com/ShishirPatil/gorilla/main/"
     "berkeley-function-call-leaderboard/bfcl_eval/data"
 )
+MMMU_SUBJECTS = (
+    "Accounting",
+    "Agriculture",
+    "Architecture_and_Engineering",
+    "Art",
+    "Biology",
+    "Chemistry",
+    "Computer_Science",
+    "Design",
+    "Economics",
+    "Electronics",
+    "Energy_and_Power",
+    "Finance",
+    "Geography",
+    "History",
+    "Literature",
+    "Materials",
+    "Math",
+    "Mechanical_Engineering",
+    "Music",
+    "Physics",
+)
+PROVIDER_BLOCKED_PHRASES = ("dalai lama",)
 
 
 def parse_args() -> argparse.Namespace:
@@ -42,9 +68,10 @@ def main() -> None:
         *load_gsm8k(40, args.seed),
         *load_commonsense_qa(30, args.seed),
         *load_bbh_logic(30, args.seed),
-        *load_scienceqa(80, args.seed, image_dir),
-        *load_chartqa(10, args.seed, image_dir),
-        *load_ocr_vqa(10, image_dir),
+        *load_scienceqa(40, args.seed, image_dir),
+        *load_chartqa(20, args.seed, image_dir),
+        *load_ocr_vqa(20, image_dir),
+        *load_mmmu(20, args.seed, image_dir),
         *load_bfcl("simple_python", 50, args.seed),
         *load_bfcl("multiple", 50, args.seed),
     ]
@@ -73,7 +100,6 @@ def load_gsm8k(limit: int, seed: int) -> list[TaskExample]:
             metadata={
                 "source": "openai/gsm8k",
                 "category": "text",
-                "rule_tier": "strong",
             },
         )
         for idx, row in enumerate(dataset.select(range(limit)))
@@ -99,7 +125,6 @@ def load_commonsense_qa(limit: int, seed: int) -> list[TaskExample]:
                 metadata={
                     "source": "tau/commonsense_qa",
                     "category": "text",
-                    "rule_tier": "cheap",
                 },
             )
         )
@@ -125,7 +150,6 @@ def load_bbh_logic(limit: int, seed: int) -> list[TaskExample]:
                 metadata={
                     "source": "BIG-Bench-Hard/logical_deduction_three_objects",
                     "category": "text",
-                    "rule_tier": "strong",
                 },
             )
         )
@@ -161,7 +185,6 @@ def load_scienceqa(limit: int, seed: int, image_dir: Path) -> list[TaskExample]:
                     "source": "derek-thomas/ScienceQA",
                     "category": "vision",
                     "vision_subtype": "scienceqa",
-                    "rule_tier": "cheap",
                     "grade": row.get("grade"),
                     "subject": row.get("subject"),
                 },
@@ -192,7 +215,6 @@ def load_chartqa(limit: int, seed: int, image_dir: Path) -> list[TaskExample]:
                     "source": "docintel/ChartQA",
                     "category": "vision",
                     "vision_subtype": "chart",
-                    "rule_tier": "strong",
                 },
             )
         )
@@ -210,6 +232,9 @@ def load_ocr_vqa(limit: int, image_dir: Path) -> list[TaskExample]:
         image = row.get("image")
         if image is None or not questions or not answers:
             continue
+        question_and_answer = f"{questions[0]} {answers[0]}".lower()
+        if any(phrase in question_and_answer for phrase in PROVIDER_BLOCKED_PHRASES):
+            continue
         image_path = image_dir / f"ocr-vqa-{len(examples):04d}.jpg"
         image.convert("RGB").save(image_path, quality=88, optimize=True)
         examples.append(
@@ -224,13 +249,86 @@ def load_ocr_vqa(limit: int, image_dir: Path) -> list[TaskExample]:
                     "source": "pppop7/OCR-VQA",
                     "category": "vision",
                     "vision_subtype": "ocr",
-                    "rule_tier": "strong",
                 },
             )
         )
         if len(examples) >= limit:
             break
     return examples
+
+
+def load_mmmu(limit: int, seed: int, image_dir: Path) -> list[TaskExample]:
+    from datasets import load_dataset
+
+    examples: list[TaskExample] = []
+    cached_rows = _cached_mmmu_validation_rows()
+    for subject in MMMU_SUBJECTS:
+        if cached_rows:
+            rows = [row for row in cached_rows if str(row.get("id", "")).startswith(f"validation_{subject}_")]
+        else:
+            rows = list(load_dataset("MMMU/MMMU", subject, split="validation"))
+        random.Random(f"{seed}:{subject}").shuffle(rows)
+        for row in rows:
+            images = [row.get(f"image_{index}") for index in range(1, 8)]
+            present_images = [image for image in images if image is not None]
+            choices = _parse_mmmu_options(row.get("options"))
+            answer = str(row.get("answer") or "").strip().upper()
+            if len(present_images) != 1 or not choices or len(answer) != 1 or answer not in "ABCDEFG":
+                continue
+            answer_index = ord(answer) - ord("A")
+            if answer_index >= len(choices):
+                continue
+
+            image_path = image_dir / f"mmmu-{len(examples):04d}.png"
+            _save_mmmu_image(present_images[0], image_path)
+            question = str(row.get("question") or "").strip()
+            question = re.sub(r"<image[_ ]?\d+>", "the image", question, flags=re.IGNORECASE)
+            examples.append(
+                TaskExample(
+                    id=f"mmmu-{len(examples):04d}",
+                    dataset="mmmu",
+                    task_type="vqa",
+                    question=question,
+                    answer=answer_index,
+                    choices=choices,
+                    image_path=str(image_path),
+                    metadata={
+                        "source": "MMMU/MMMU",
+                        "category": "vision",
+                        "vision_subtype": "multidiscipline",
+                        "subject": subject,
+                        "topic_difficulty": row.get("topic_difficulty"),
+                    },
+                )
+            )
+            break
+        if len(examples) >= limit:
+            break
+    if len(examples) != limit:
+        raise ValueError(f"MMMU yielded {len(examples)} usable single-image MCQs; expected {limit}")
+    return examples
+
+
+def _cached_mmmu_validation_rows() -> list[dict[str, Any]]:
+    cache_root = Path.home() / ".cache" / "huggingface" / "hub" / "datasets--lmms-lab--MMMU" / "snapshots"
+    paths = sorted(cache_root.glob("*/data/validation-*.parquet"))
+    if not paths:
+        return []
+    import pyarrow.parquet as pq
+
+    return pq.read_table(paths[-1]).to_pylist()
+
+
+def _save_mmmu_image(value: Any, path: Path) -> None:
+    if hasattr(value, "convert"):
+        image = value
+    elif isinstance(value, dict) and value.get("bytes"):
+        from PIL import Image
+
+        image = Image.open(io.BytesIO(value["bytes"]))
+    else:
+        raise ValueError("Unsupported MMMU image payload")
+    image.convert("RGB").save(path, optimize=True)
 
 
 def load_bfcl(category: str, limit: int, seed: int) -> list[TaskExample]:
@@ -274,7 +372,6 @@ def _convert_bfcl_row(
             "source": f"BFCL_v4_{category}",
             "category": "tool",
             "tool_subtype": "multiple" if category == "multiple" else "simple",
-            "rule_tier": "strong" if category == "multiple" else "cheap",
         },
     )
 
@@ -314,15 +411,27 @@ def _validate_counts(examples: list[TaskExample]) -> None:
 
 
 def _get_json(url: str) -> dict[str, Any]:
-    response = requests.get(url, timeout=120)
-    response.raise_for_status()
-    return response.json()
+    return _download(url).json()
 
 
 def _get_jsonl(url: str) -> list[dict[str, Any]]:
-    response = requests.get(url, timeout=120)
-    response.raise_for_status()
+    response = _download(url)
     return [json.loads(line) for line in response.text.splitlines() if line.strip()]
+
+
+def _download(url: str) -> requests.Response:
+    error: requests.RequestException | None = None
+    for attempt in range(4):
+        try:
+            response = requests.get(url, timeout=120)
+            response.raise_for_status()
+            return response
+        except requests.RequestException as exc:
+            error = exc
+            if attempt < 3:
+                time.sleep(2**attempt)
+    assert error is not None
+    raise error
 
 
 def _extract_gsm8k_answer(answer_text: str) -> str:
@@ -336,6 +445,18 @@ def _split_bbh_question(value: str) -> tuple[str, list[str]]:
     question, option_block = value.rsplit("\nOptions:\n", 1)
     choices = [re.sub(r"^\([A-Z]\)\s*", "", line) for line in option_block.splitlines() if line.strip()]
     return question, choices
+
+
+def _parse_mmmu_options(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value]
+    if not isinstance(value, str) or not value.strip():
+        return []
+    try:
+        parsed = ast.literal_eval(value)
+    except (SyntaxError, ValueError):
+        return []
+    return [str(item) for item in parsed] if isinstance(parsed, list) else []
 
 
 def _bfcl_question(value: Any) -> str:

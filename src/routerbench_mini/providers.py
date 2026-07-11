@@ -15,7 +15,7 @@ from .normalization import canonical_answer, normalize_tool_call, parse_json_obj
 from .tasks import TaskExample
 
 
-PROMPT_VERSION = "unified-multimodal-v2"
+PROMPT_VERSION = "unified-multimodal-v2-review-correct"
 
 
 @dataclass
@@ -38,6 +38,9 @@ class Provider(Protocol):
     model: str
 
     def generate(self, task: TaskExample) -> ModelResponse:
+        ...
+
+    def review_and_correct(self, task: TaskExample, candidate: ModelResponse) -> ModelResponse:
         ...
 
 
@@ -79,6 +82,34 @@ class MockProvider:
             metadata={"mock_correct": correct, "self_check_pass": correct},
         )
 
+    def review_and_correct(self, task: TaskExample, candidate: ModelResponse) -> ModelResponse:
+        from .scoring import is_correct
+
+        if is_correct(task, candidate):
+            return ModelResponse(
+                role=self.role,
+                model=self.model,
+                answer=candidate.answer,
+                raw_text=candidate.raw_text,
+                confidence=max(candidate.confidence, 0.9),
+                latency_ms=self.LATENCY_BY_ROLE.get(self.role, 900.0),
+                metadata={
+                    "mock_correct": True,
+                    "self_check_pass": True,
+                    "inference_mode": "review_and_correct",
+                    "review_action": "keep",
+                    "review_changed": False,
+                },
+            )
+        corrected = self.generate(task)
+        corrected.metadata = {
+            **corrected.metadata,
+            "inference_mode": "review_and_correct",
+            "review_action": "correct",
+            "review_changed": corrected.answer != candidate.answer,
+        }
+        return corrected
+
     def _correct_answer(self, task: TaskExample) -> str:
         answer = canonical_answer(task.task_type, task.answer)
         if task.task_type == "tool":
@@ -114,7 +145,7 @@ class OpenAICompatibleProvider:
         base_url: str,
         *,
         timeout_s: int = 120,
-        temperature: float = 0.0,
+        temperature: float = 0.2,
         max_tokens: int = 256,
         enable_thinking: bool = False,
         cache_dir: str = ".cache/routerbench",
@@ -138,13 +169,26 @@ class OpenAICompatibleProvider:
         self.retries = retries
 
     def generate(self, task: TaskExample) -> ModelResponse:
-        cache_path = self._cache_path(task)
+        return self._generate(task, mode="solve", candidate=None)
+
+    def review_and_correct(self, task: TaskExample, candidate: ModelResponse) -> ModelResponse:
+        return self._generate(task, mode="review_and_correct", candidate=candidate)
+
+    def _generate(
+        self,
+        task: TaskExample,
+        *,
+        mode: str,
+        candidate: ModelResponse | None,
+    ) -> ModelResponse:
+        cache_path = self._cache_path(task, mode=mode, candidate=candidate)
         if cache_path.exists():
             return ModelResponse.from_dict(json.loads(cache_path.read_text(encoding="utf-8")))
 
+        prompt = build_prompt(task) if candidate is None else build_review_prompt(task, candidate)
         payload: dict[str, Any] = {
             "model": self.model,
-            "messages": [{"role": "user", "content": self._content_for_task(task)}],
+            "messages": [{"role": "user", "content": self._content_for_task(task, prompt)}],
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "enable_thinking": self.enable_thinking,
@@ -162,6 +206,7 @@ class OpenAICompatibleProvider:
         answer, raw_text, confidence, self_check_pass = self._parse_message(task, message)
         usage = data.get("usage", {})
         cost = self._usage_cost(usage)
+        review_changed = candidate is not None and not _answers_equivalent(task, answer, candidate.answer)
         result = ModelResponse(
             role=self.role,
             model=self.model,
@@ -175,6 +220,9 @@ class OpenAICompatibleProvider:
                 "currency": self.currency,
                 "self_check_pass": self_check_pass,
                 "prompt_version": PROMPT_VERSION,
+                "inference_mode": mode,
+                "review_action": "correct" if review_changed else "keep" if candidate is not None else "solve",
+                "review_changed": review_changed,
             },
         )
         cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -226,8 +274,7 @@ class OpenAICompatibleProvider:
             return answer, raw_text, confidence, self_check not in {"fail", "failed", "false", "reject"}
         return raw_text, raw_text, _extract_confidence(raw_text), bool(raw_text)
 
-    def _content_for_task(self, task: TaskExample) -> Any:
-        prompt = build_prompt(task)
+    def _content_for_task(self, task: TaskExample, prompt: str) -> Any:
         if not task.image_path:
             return prompt
         image_path = Path(task.image_path)
@@ -267,11 +314,19 @@ class OpenAICompatibleProvider:
             + output_tokens * self.output_price_per_million
         ) / 1_000_000
 
-    def _cache_path(self, task: TaskExample) -> Path:
+    def _cache_path(
+        self,
+        task: TaskExample,
+        *,
+        mode: str,
+        candidate: ModelResponse | None,
+    ) -> Path:
         payload = {
             "prompt_version": PROMPT_VERSION,
+            "mode": mode,
             "model": self.model,
             "task": task.to_dict(),
+            "candidate_answer": candidate.answer if candidate is not None else None,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "enable_thinking": self.enable_thinking,
@@ -312,6 +367,44 @@ def build_prompt(task: TaskExample) -> str:
     return "\n".join(lines)
 
 
+def build_review_prompt(task: TaskExample, candidate: ModelResponse) -> str:
+    if task.tools:
+        return (
+            "Act as the final reviewer for a candidate function call. Independently verify the candidate "
+            "against the user request and every provided function schema. If it is fully correct, preserve "
+            "the same function and arguments. If it is wrong, call the correct function with corrected "
+            "arguments. Call exactly one provided function and do not answer in plain text."
+            f"\nUser request: {task.question}"
+            f"\nCandidate function call: {candidate.answer}"
+        )
+
+    lines = [
+        "Act as the final reviewer for a candidate answer.",
+        "Independently solve and verify the task before judging the candidate.",
+        "If the candidate is correct, preserve it exactly. If it is wrong, return the corrected answer.",
+        "Do not output reasoning or explanation.",
+        f"Task type: {task.task_type}",
+        f"Question: {task.question}",
+    ]
+    if task.choices:
+        lines.append("Choices:")
+        lines.extend(f"{chr(65 + idx)}. {choice}" for idx, choice in enumerate(task.choices))
+        answer_instruction = "Set answer to one choice letter only."
+    elif task.task_type == "math":
+        answer_instruction = "Set answer to the final number only."
+    else:
+        answer_instruction = "Set answer to a short exact answer only."
+    lines.extend(
+        [
+            f"Candidate answer: {candidate.answer}",
+            answer_instruction,
+            "Return one JSON object only, with no markdown:",
+            '{"answer":"...","confidence":0.0,"self_check":"pass or fail","review_action":"keep or correct"}',
+        ]
+    )
+    return "\n".join(lines)
+
+
 def provider_from_config(role: str, config: dict[str, Any]) -> Provider:
     provider_type = config.get("type", "mock")
     model = str(config.get("model", role))
@@ -330,7 +423,7 @@ def provider_from_config(role: str, config: dict[str, Any]) -> Provider:
             api_key=api_key,
             base_url=base_url,
             timeout_s=int(config.get("timeout_s", 120)),
-            temperature=float(config.get("temperature", 0.0)),
+            temperature=float(config.get("temperature", 0.2)),
             max_tokens=int(config.get("max_tokens", 256)),
             enable_thinking=bool(config.get("enable_thinking", False)),
             cache_dir=str(config.get("cache_dir", ".cache/routerbench")),
@@ -359,6 +452,14 @@ def _extract_confidence(text: str) -> float:
         return _coerce_confidence(raw, 0.5)
     except IndexError:
         return 0.5
+
+
+def _answers_equivalent(task: TaskExample, left: str, right: str) -> bool:
+    left_value = canonical_answer(task.task_type, left)
+    right_value = canonical_answer(task.task_type, right)
+    if isinstance(left_value, dict) or isinstance(right_value, dict):
+        return _json_dumps(left_value) == _json_dumps(right_value)
+    return str(left_value).strip().lower() == str(right_value).strip().lower()
 
 
 def _json_dumps(value: Any) -> str:

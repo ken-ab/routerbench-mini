@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from .calibration import ConfidenceEstimator, RawConfidenceEstimator
+from .features import observable_task_features, task_risk_score
 from .providers import ModelResponse, Provider
 from .scoring import is_correct
 from .tasks import TaskExample
@@ -65,8 +67,13 @@ class AlwaysStrongRouter(BaseRouter):
 class TaskAwareRouter(BaseRouter):
     name = "task_aware"
 
+    def __init__(self, risk_threshold: float = 2.0) -> None:
+        self.risk_threshold = risk_threshold
+
     def route(self, task: TaskExample, providers: dict[str, Provider]) -> RoutingDecision:
-        role = "strong" if task.metadata.get("rule_tier") == "strong" else "cheap"
+        features = observable_task_features(task)
+        risk_score = task_risk_score(task)
+        role = "strong" if risk_score >= self.risk_threshold else "cheap"
         response = providers[role].generate(task)
         return RoutingDecision(
             router=self.name,
@@ -74,25 +81,49 @@ class TaskAwareRouter(BaseRouter):
             response=response,
             calls=[role],
             responses=[response],
-            trace={"rule_tier": task.metadata.get("rule_tier", "cheap")},
+            trace={
+                "observable_features": features,
+                "risk_score": risk_score,
+                "risk_threshold": self.risk_threshold,
+            },
         )
 
 
 class ReflectionRouter(BaseRouter):
     name = "reflection"
 
-    def __init__(self, confidence_threshold: float = 0.55) -> None:
+    def __init__(
+        self,
+        confidence_threshold: float = 0.55,
+        *,
+        confidence_estimator: ConfidenceEstimator | None = None,
+        check_format: bool = True,
+        check_confidence: bool = True,
+        check_self_check: bool = True,
+        name: str | None = None,
+    ) -> None:
         self.confidence_threshold = confidence_threshold
+        self.confidence_estimator = confidence_estimator or RawConfidenceEstimator()
+        self.check_format = check_format
+        self.check_confidence = check_confidence
+        self.check_self_check = check_self_check
+        if name is not None:
+            self.name = name
 
     def route(self, task: TaskExample, providers: dict[str, Provider]) -> RoutingDecision:
         cheap_response = providers["cheap"].generate(task)
+        estimated_confidence = self.confidence_estimator.predict_correctness(task, cheap_response)
         verification = verify_response(
             task,
             cheap_response,
             confidence_threshold=self.confidence_threshold,
+            estimated_confidence=estimated_confidence,
+            check_format=self.check_format,
+            check_confidence=self.check_confidence,
+            check_self_check=self.check_self_check,
         )
         if verification.should_escalate:
-            strong_response = providers["strong"].generate(task)
+            strong_response = providers["strong"].review_and_correct(task, cheap_response)
             return RoutingDecision(
                 router=self.name,
                 selected_role="strong",
@@ -101,7 +132,13 @@ class ReflectionRouter(BaseRouter):
                 responses=[cheap_response, strong_response],
                 escalated=True,
                 verification=verification,
-                trace={"cheap_answer": cheap_response.answer},
+                trace={
+                    "cheap_answer": cheap_response.answer,
+                    "raw_confidence": cheap_response.confidence,
+                    "estimated_correctness_probability": estimated_confidence,
+                    "review_action": strong_response.metadata.get("review_action", "unknown"),
+                    "review_changed": bool(strong_response.metadata.get("review_changed", False)),
+                },
             )
         return RoutingDecision(
             router=self.name,
@@ -111,6 +148,10 @@ class ReflectionRouter(BaseRouter):
             responses=[cheap_response],
             escalated=False,
             verification=verification,
+            trace={
+                "raw_confidence": cheap_response.confidence,
+                "estimated_correctness_probability": estimated_confidence,
+            },
         )
 
 
@@ -151,10 +192,11 @@ class OracleRouter(BaseRouter):
 def default_routers(
     costs: dict[str, float] | None = None,
     confidence_threshold: float = 0.55,
+    task_risk_threshold: float = 2.0,
 ) -> list[BaseRouter]:
     return [
         AlwaysCheapRouter(),
         AlwaysStrongRouter(),
-        TaskAwareRouter(),
+        TaskAwareRouter(risk_threshold=task_risk_threshold),
         ReflectionRouter(confidence_threshold=confidence_threshold),
     ]

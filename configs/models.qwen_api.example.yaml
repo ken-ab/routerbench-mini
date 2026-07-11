@@ -6,7 +6,7 @@ providers:
     model: qwen3.5-35b-a3b
     api_key_env: QWEN_API_KEY
     base_url_env: QWEN_BASE_URL
-    temperature: 0
+    temperature: 0.2
     max_tokens: 256
     enable_thinking: false
     cache_dir: .cache/routerbench
@@ -18,7 +18,7 @@ providers:
     model: qwen3.5-397b-a17b
     api_key_env: QWEN_API_KEY
     base_url_env: QWEN_BASE_URL
-    temperature: 0
+    temperature: 0.2
     max_tokens: 256
     enable_thinking: false
     cache_dir: .cache/routerbench

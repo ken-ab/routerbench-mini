@@ -16,23 +16,34 @@ class VerificationResult:
     features: dict[str, Any]
 
 
-def verify_response(task: TaskExample, response: ModelResponse, confidence_threshold: float = 0.55) -> VerificationResult:
+def verify_response(
+    task: TaskExample,
+    response: ModelResponse,
+    confidence_threshold: float = 0.55,
+    *,
+    estimated_confidence: float | None = None,
+    check_format: bool = True,
+    check_confidence: bool = True,
+    check_self_check: bool = True,
+) -> VerificationResult:
+    routing_confidence = response.confidence if estimated_confidence is None else estimated_confidence
     features: dict[str, Any] = {
         "task_type": task.task_type,
         "has_image": task.requires_vision,
         "question_length": len(task.question.split()),
-        "confidence": response.confidence,
+        "raw_confidence": response.confidence,
+        "estimated_correctness_probability": routing_confidence,
         "model_role": response.role,
         "self_check_pass": bool(response.metadata.get("self_check_pass", True)),
     }
     valid_format = _format_is_valid(task, response, features)
     reasons: list[str] = []
 
-    if not valid_format:
+    if check_format and not valid_format:
         reasons.append("invalid_answer_format")
-    if response.confidence < confidence_threshold:
+    if check_confidence and routing_confidence < confidence_threshold:
         reasons.append("low_confidence")
-    if not features["self_check_pass"]:
+    if check_self_check and not features["self_check_pass"]:
         reasons.append("self_check_failed")
 
     should_escalate = bool(reasons)

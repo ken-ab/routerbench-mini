@@ -1,0 +1,61 @@
+{
+  "created_at": "2026-07-11T11:38:36.058190+00:00",
+  "dataset": {
+    "total": 300,
+    "validation": 60,
+    "test": 240,
+    "categories": {
+      "text": 100,
+      "vision": 100,
+      "tool": 100
+    },
+    "datasets": {
+      "gsm8k": 40,
+      "commonsenseqa": 30,
+      "bbh-logical-deduction": 30,
+      "scienceqa-img": 40,
+      "chartqa": 20,
+      "ocr-vqa": 20,
+      "mmmu": 20,
+      "bfcl-simple_python": 50,
+      "bfcl-multiple": 50
+    }
+  },
+  "models": {
+    "cheap": {
+      "type": "openai_compatible",
+      "model": "qwen3.5-35b-a3b",
+      "base_url_env": "QWEN_BASE_URL",
+      "temperature": 0.2,
+      "max_tokens": 256,
+      "enable_thinking": false,
+      "cache_dir": ".cache/routerbench",
+      "input_price_per_million": 0.4,
+      "output_price_per_million": 3.2,
+      "currency": "CNY"
+    },
+    "strong": {
+      "type": "openai_compatible",
+      "model": "qwen3.5-397b-a17b",
+      "base_url_env": "QWEN_BASE_URL",
+      "temperature": 0.2,
+      "max_tokens": 256,
+      "enable_thinking": false,
+      "cache_dir": ".cache/routerbench",
+      "input_price_per_million": 1.2,
+      "output_price_per_million": 7.2,
+      "currency": "CNY"
+    }
+  },
+  "selected_task_risk_threshold": 2.0,
+  "selected_confidence_threshold": 0.5,
+  "confidence_calibration": {
+    "method": "cross_validated_platt_scaling",
+    "examples": 60,
+    "folds": 3,
+    "empirical_accuracy": 0.916667,
+    "brier_on_calibration_set": 0.042945,
+    "include_task_features": "true"
+  },
+  "selection_rule": "highest validation accuracy; break ties by lowest cost and strong-model usage"
+}

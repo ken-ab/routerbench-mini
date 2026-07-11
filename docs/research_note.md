@@ -1,61 +1,86 @@
-# RouterBench-Mini Research Note
+# RouterBench-Mini V2 Research Note
 
 ## Research Question
 
-Can a lightweight router reuse a cheaper multimodal foundation model on easy tasks and selectively invoke a stronger model while preserving accuracy under cost and latency constraints?
-
-The study deliberately uses two models from the same Qwen 3.5 family. Both models support text, vision, and tools. This controls for provider and interface differences and makes model capacity, task difficulty, and routing policy the variables of interest.
+Can observable task features and validation-calibrated response signals select between a cheap and strong multimodal foundation model under accuracy, cost, and latency constraints? When escalation occurs, can Strong review a Cheap candidate without destroying correct answers?
 
 ## Protocol
 
-- Dataset: 300 examples, balanced across text, vision, and tool use.
-- Split: stratified 60-example validation set and 240-example held-out test set, seed 42.
-- Cheap model: `qwen3.5-35b-a3b`.
-- Strong model: `qwen3.5-397b-a17b`.
-- Shared decoding: temperature 0, maximum output 256 tokens, thinking disabled.
-- Shared interface: one prompt contract, JSON responses for reasoning/VQA, native function calling for tools.
-- Metrics: accuracy, measured API token cost, observed end-to-end latency, escalation rate, and strong-model usage.
-- Threshold selection: choose the lowest-cost reflection threshold within two percentage points of Always Strong validation accuracy; if none qualifies, choose the most accurate threshold and break ties by cost.
+- 300 tasks: 100 text, 100 vision, and 100 tool use.
+- Vision mix: 40 ScienceQA, 20 ChartQA, 20 OCR-VQA, and one single-image MCQ from each of 20 MMMU subjects.
+- Stratified split: 60 validation and 240 held-out test examples, seed 42.
+- Cheap: `qwen3.5-35b-a3b`.
+- Strong: `qwen3.5-397b-a17b`.
+- Shared decoding: temperature 0.2, maximum output 256, thinking disabled.
+- Shared prompt and structured output contract; native function calling for tools.
+- Metrics: accuracy, measured token cost, observed latency, escalation, and strong usage.
 
-The test split is used once after selecting the Reflection Router threshold on validation. API responses are cached by model, task, prompt version, and decoding configuration.
+Task-Aware uses only request-time observable features. Reflection fits a cross-validated Platt calibrator on validation-only Cheap responses. Thresholds maximize validation accuracy and break ties by cost and strong usage. No test labels are used for threshold selection.
 
-## Headline Test Results
+## Main Test Results
 
-| Method | Accuracy | Avg. cost/task (CNY) | Avg. latency (ms) | Strong usage |
+| Method | Accuracy | Avg. cost/task (CNY) | Avg. latency (ms) | Strong use |
 |---|---:|---:|---:|---:|
-| Always Cheap | 0.8000 | 0.00023496 | 707.13 | 0.0000 |
-| Always Strong | **0.8167** | 0.00063335 | 1411.50 | 1.0000 |
-| Task-Aware Router | 0.8125 | 0.00044290 | 1062.50 | 0.4917 |
-| Reflection Router | 0.7875 | 0.00057631 | 1316.75 | 0.3333 |
+| Always Cheap | 0.7667 | 0.00024165 | 1141.09 | 0.0000 |
+| Always Strong | 0.7792 | 0.00065225 | 1782.91 | 1.0000 |
+| Task-Aware Router | **0.8000** | 0.00052408 | 1610.24 | 0.6833 |
+| Full Calibrated Reflection | 0.7667 | 0.00025260 | 1173.84 | 0.0208 |
 
-Task-Aware routing is the best observed trade-off. It saves 30.1% API cost and 24.7% latency relative to Always Strong while losing only 0.42 percentage points of accuracy.
+Task-Aware is the best main method. Relative to Always Strong, it improves accuracy by 2.08 percentage points, reduces average cost by 19.7%, and reduces latency by 9.7%.
 
-## Category Findings
+## Category Results
 
-- Text: the strong model improves over cheap from 70.00% to 76.25%; Task-Aware reaches 75.00%.
-- Vision: the strong model reaches 88.75%, but Task-Aware and cheap both reach 86.25%. The fixed vision difficulty rule did not recover the full strong-model gain.
-- Tool use: cheap reaches 83.75%, higher than strong at 80.00%. This is evidence that a larger model is not uniformly better under a strict function-call scoring contract.
+| Category | Cheap | Strong | Task-Aware | Full Reflection |
+|---|---:|---:|---:|---:|
+| Text | 68.75% | 76.25% | 76.25% | 68.75% |
+| Vision | 76.25% | 77.50% | 81.25% | 76.25% |
+| Tool | **85.00%** | 80.00% | 82.50% | **85.00%** |
 
-Across the 240 test tasks, both models are correct on 183 tasks, the strong model fixes 13 cheap-model errors, the strong model regresses 9 cheap-model successes, and both fail on 35 tasks. The modest 13-task upside explains why indiscriminate strong-model use provides only a small aggregate accuracy gain.
+Strong capacity helps text, while Cheap is better under the strict tool-call scorer. Observable routing benefits from this non-monotonic model relationship.
 
-## Why Reflection Failed
+## Reflection Ablation
 
-The selected confidence threshold is 0.80. Because tool-call responses do not expose a calibrated confidence value, their fallback confidence causes every test tool task to escalate, while high-confidence text and vision errors are often accepted. The resulting policy has:
+| Variant | Accuracy | Avg. cost | Avg. latency | Escalation |
+|---|---:|---:|---:|---:|
+| Format only | 76.67% | 0.00024165 | 1141 ms | 0.00% |
+| Raw confidence | 76.67% | 0.00024524 | 1149 ms | 0.42% |
+| Calibrated response only | **79.17%** | 0.00056005 | 2060 ms | 59.58% |
+| Full response + task features | 76.67% | 0.00025260 | 1174 ms | 2.08% |
 
-- 35 false accepts: the cheap answer is wrong but is not escalated.
-- 67 unnecessary escalations: the cheap answer is correct but the strong model is still called.
-- 51 total errors, compared with 44 for Always Strong and 45 for Task-Aware.
+Response-only calibration is the strongest Reflection variant and exceeds Always Strong by 1.25 percentage points at 14.1% lower API cost. Its latency is higher because Cheap and Strong review are sequential. The full feature calibrator achieved 95% validation accuracy but did not generalize; with only 60 calibration examples, the higher-dimensional feature set overfit.
 
-This is not evidence that reflection is intrinsically ineffective. It shows that self-reported confidence plus deterministic format checks is insufficiently calibrated for cross-task routing.
+## Review-and-Correct Counterfactual
 
-## Interpretation
+For each escalated response-only example, compare the observed review result with a counterfactual that blindly substitutes the independently generated Strong answer:
 
-The central finding is not simply that one model is better. Strong-model advantage is sparse and task dependent. A small amount of task structure captures much of that advantage, whereas an uncalibrated generic confidence signal does not. For this model pair and benchmark, model selection benefits more from knowing the task than from asking the model how confident it feels.
+| Policy | Correct among 143 escalations | Beneficial | Harmful |
+|---|---:|---:|---:|
+| Blind Strong replacement | 113 | 14 | 8 |
+| Review-and-correct | 113 | 11 | 5 |
 
-## Limitations and Next Step
+Review-and-correct preserves the same number of correct final answers while reducing harmful escalation by 3 cases, or 37.5%. It is more conservative, but that conservatism also loses 3 beneficial corrections. Of 143 reviews, Strong kept the Cheap candidate 119 times and changed it 24 times.
 
-The benchmark is intentionally small and uses one provider and model family. The fixed rule tiers are hand-authored, BFCL scoring checks the first canonical function call and required arguments, and latency is sensitive to remote service load. Token prices are experiment inputs and may become stale.
+The change therefore addresses the requested failure mode partially, not completely. A stronger future design would train an explicit candidate-verdict model or use a separate adjudication set; it should not be tuned on the current test results.
 
-The next experiment should fit a calibrated router on validation data using task family, dataset, answer format validity, cheap-model confidence, and cheap-model latency. A logistic model or isotonic confidence calibrator would be sufficient; no large routing network is needed. It should then be frozen and evaluated on the same held-out test protocol.
+## Model Disagreement
 
-Raw summary tables, threshold sweeps, the Pareto plot, metadata, and error counts are stored under `results/qwen3.5-study/`.
+Across the 240 test tasks:
+
+- Both models correct: 170.
+- Strong fixes Cheap: 17.
+- Cheap is correct while Strong is wrong: 14.
+- Both wrong: 39.
+
+Only 31 tasks distinguish the models, so routing quality depends on identifying a small and asymmetric benefit region. Always Strong is not a reliable oracle, especially for tools.
+
+## Limitations
+
+- One provider, one model family, and 300 examples.
+- Only 60 validation examples for thresholding and probability calibration.
+- The current correctness probability is an empirical estimate, not a literal true probability.
+- API latency includes remote service variance.
+- Tool scoring checks one canonical call and required arguments.
+- One OCR-VQA item rejected by both endpoints before generation is deterministically replaced by the next source item and never scored.
+- The response-only ablation was examined after the main test and must be treated as analysis, not a newly selected headline policy.
+
+All main artifacts are under `results/qwen3.5-v2-study/`; ablation and counterfactual tables are under `results/qwen3.5-v2-ablation/`.

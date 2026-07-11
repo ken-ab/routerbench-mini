@@ -21,6 +21,13 @@ ml = [
 analysis = [
   "matplotlib>=3.9",
 ]
+study = [
+  "datasets>=2.18",
+  "matplotlib>=3.9",
+  "pillow>=10.0",
+  "scikit-learn>=1.4",
+  "socksio>=1.0",
+]
 test = [
   "pytest>=8.0",
 ]

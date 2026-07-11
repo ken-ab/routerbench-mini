@@ -21,6 +21,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--costs", default="configs/costs.yaml")
     parser.add_argument("--out", default="results/mock")
     parser.add_argument("--confidence-threshold", type=float, default=0.55)
+    parser.add_argument("--task-risk-threshold", type=float, default=2.0)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--no-precompute", action="store_true")
     return parser.parse_args()
@@ -74,7 +75,11 @@ def main() -> None:
     providers = build_providers(args.models)
     if not args.no_precompute:
         precompute_responses(tasks, providers, workers=args.workers)
-    routers = default_routers(costs, confidence_threshold=args.confidence_threshold)
+    routers = default_routers(
+        costs,
+        confidence_threshold=args.confidence_threshold,
+        task_risk_threshold=args.task_risk_threshold,
+    )
     rows = evaluate(tasks, providers, routers, costs)
     write_results(args.out, rows)
 

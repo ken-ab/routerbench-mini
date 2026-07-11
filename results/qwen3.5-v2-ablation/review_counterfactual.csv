@@ -1,0 +1,5 @@
+router,escalations,review_correct,blind_strong_correct,review_beneficial,blind_strong_beneficial,review_harmful,blind_strong_harmful,harmful_avoided,review_keep,review_correct_action
+reflection_calibrated_response_only,143,113,113,11,14,5,8,3,119,24
+reflection_format_only,0,0,0,0,0,0,0,0,0,0
+reflection_full,5,0,0,0,0,0,0,0,2,3
+reflection_raw_confidence,1,0,0,0,0,0,0,0,0,1
