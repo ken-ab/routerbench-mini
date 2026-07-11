@@ -7,6 +7,7 @@ from .calibration import ConfidenceEstimator, RawConfidenceEstimator
 from .features import observable_task_features, task_risk_score
 from .providers import ModelResponse, Provider
 from .scoring import is_correct
+from .selection import LearnedQualityGapEstimator
 from .tasks import TaskExample
 from .verifiers import VerificationResult, verify_response
 
@@ -85,6 +86,38 @@ class TaskAwareRouter(BaseRouter):
                 "observable_features": features,
                 "risk_score": risk_score,
                 "risk_threshold": self.risk_threshold,
+            },
+        )
+
+
+class LearnedCostAwareRouter(BaseRouter):
+    name = "learned_cost_aware"
+
+    def __init__(
+        self,
+        estimator: LearnedQualityGapEstimator,
+        advantage_threshold: float,
+        *,
+        name: str | None = None,
+    ) -> None:
+        self.estimator = estimator
+        self.advantage_threshold = advantage_threshold
+        if name is not None:
+            self.name = name
+
+    def route(self, task: TaskExample, providers: dict[str, Provider]) -> RoutingDecision:
+        advantage = self.estimator.predict_advantage(task)
+        role = "strong" if advantage >= self.advantage_threshold else "cheap"
+        response = providers[role].generate(task)
+        return RoutingDecision(
+            router=self.name,
+            selected_role=role,
+            response=response,
+            calls=[role],
+            responses=[response],
+            trace={
+                "predicted_strong_advantage": advantage,
+                "advantage_threshold": self.advantage_threshold,
             },
         )
 

@@ -37,6 +37,8 @@ def prediction_row(task: TaskExample, decision: RoutingDecision, costs: dict[str
             decision.response.confidence,
         ),
         "task_risk_score": decision.trace.get("risk_score", ""),
+        "predicted_strong_advantage": decision.trace.get("predicted_strong_advantage", ""),
+        "advantage_threshold": decision.trace.get("advantage_threshold", ""),
         "review_action": decision.trace.get("review_action", ""),
         "review_changed": int(bool(decision.trace.get("review_changed", False))),
         "prompt_tokens": sum(int(item.get("prompt_tokens", 0)) for item in usage),

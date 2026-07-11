@@ -1,0 +1,6 @@
+router,total,accuracy,total_cost,avg_cost,avg_latency_ms,escalation_rate,strong_usage_rate,accuracy_ci_low,accuracy_ci_high
+always_cheap,150,0.7867,0.035642,0.00023762,1177.61,0.0,0.0,0.72,0.8468
+always_strong,150,0.8333,0.096672,0.00064448,2619.4,0.0,1.0,0.7733,0.8933
+learned_cost_aware,150,0.8,0.065539,0.00043693,2391.25,0.0,0.5,0.7333,0.86
+reflection,150,0.8,0.071305,0.00047537,2202.13,0.46,0.46,0.7333,0.86
+task_aware,150,0.8267,0.075208,0.00050139,1766.81,0.0,0.66,0.7667,0.88

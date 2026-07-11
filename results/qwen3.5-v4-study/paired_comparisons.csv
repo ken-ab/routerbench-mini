@@ -1,0 +1,5 @@
+router,baseline,accuracy_difference,accuracy_difference_ci_low,accuracy_difference_ci_high,avg_cost_difference,avg_cost_difference_ci_low,avg_cost_difference_ci_high
+always_cheap,always_strong,-0.046667,-0.1,0.006667,-0.00040686,-0.00044217,-0.00037177
+learned_cost_aware,always_strong,-0.033333,-0.073333,0.0,-0.00020755,-0.00025149,-0.00016591
+reflection,always_strong,-0.033333,-0.066667,0.0,-0.00016911,-0.0002332,-0.00010387
+task_aware,always_strong,-0.006667,-0.026667,0.013333,-0.00014309,-0.00018192,-0.00010697

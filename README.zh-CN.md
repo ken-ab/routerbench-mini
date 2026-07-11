@@ -2,124 +2,138 @@
 
 [English README](README.md)
 
-RouterBench-Mini 研究一个实际的模型选择问题：什么时候复用便宜模型已经足够，什么时候值得调用强模型？项目在统一提示词、解码配置和评分流程下，使用同一 Qwen 3.5 系列的两款多模态模型评测 300 道文本、视觉和工具调用任务。
+RouterBench-Mini 研究一个模型选择问题：什么时候复用便宜模型已经足够，什么时候值得调用强模型？项目使用同一Qwen 3.5系列的两款多模态模型，在统一提示词、解码配置、评分和真实成本统计下评测文本、视觉与工具调用任务。
 
-## V2 主要结果
+当前版本新增学习式质量差路由、out-of-fold阈值选择、两组互不重叠的独立测试、配对Bootstrap区间，以及更严格的review-and-correct分析。
 
-![V2 准确率与成本权衡](results/qwen3.5-v2-study/pareto.png)
+## V4确认性结果
 
-在 240 道独立测试题上，只使用可观察特征的 Task-Aware Router 达到 **80.00%**，比 Always Strong 高 2.08 个百分点，同时平均 API 成本降低 **19.7%**、延迟降低 **9.7%**。它在 68.33% 的任务上使用 Strong，但不读取数据集名称或答案标签。
+![V4准确率与成本权衡](results/qwen3.5-v4-study/pareto.png)
 
-| 方法 | 准确率 | 平均成本/题（CNY） | 平均延迟 | Strong 使用率 |
+V4是最终确认集：前450题用于路由开发，V4的150题与此前数据指纹完全不重叠，并且只在方法冻结后评估一次。
+
+| 方法 | 准确率 | 95% Bootstrap区间 | 平均成本/题（CNY） | 平均延迟 | Strong使用率 |
+|---|---:|---:|---:|---:|---:|
+| Always Cheap | 78.67% | [72.00, 84.68] | 0.00023762 | 1,178 ms | 0.00% |
+| Always Strong | **83.33%** | [77.33, 89.33] | 0.00064448 | 2,619 ms | 100.00% |
+| **Handcrafted Task-Aware** | **82.67%** | [76.67, 88.00] | 0.00050139 | **1,767 ms** | 66.00% |
+| Learned Cost-Aware | 80.00% | [73.33, 86.00] | **0.00043693** | 2,391 ms | 50.00% |
+| Calibrated Reflection | 80.00% | [73.33, 86.00] | 0.00047537 | 2,202 ms | 46.00% |
+
+冻结的Task-Aware是最稳健的权衡点：V4上仅比Always Strong低0.67个百分点，配对差值95%区间为[-2.67,+1.33]，同时成本降低**22.2%**、观测延迟降低**32.5%**。
+
+## 跨两次独立测试的结果
+
+V3和V4各包含150道新题，文本、视觉、工具各50题。三种冻结策略在两次实验间完全不变，因此可以合并统计：
+
+| 冻结方法 | 300道独立测试准确率 | 平均成本 | 平均延迟 | Strong使用率 |
 |---|---:|---:|---:|---:|
-| Always Cheap | 76.67% | 0.00024165 | 1,141 ms | 0.00% |
-| Always Strong | 77.92% | 0.00065225 | 1,783 ms | 100.00% |
-| **Task-Aware Router** | **80.00%** | 0.00052408 | 1,610 ms | 68.33% |
-| Full Calibrated Reflection | 76.67% | 0.00025260 | 1,174 ms | 2.08% |
+| Always Cheap | 77.00% | 0.00024081 | 935 ms | 0.00% |
+| Always Strong | 81.33% | 0.00065324 | 2,094 ms | 100.00% |
+| **Handcrafted Task-Aware** | **80.67%** | **0.00050602** | **1,536 ms** | **65.67%** |
 
-Reflection 消融中表现最好的是更简单的 response-only 概率校准：准确率 **79.17%**，平均成本 CNY 0.00056005，比 Always Strong 低 14.1%；但由于 Cheap 和 review 串行调用，延迟更高。
+Task-Aware依然只低0.67个百分点，配对区间为[-2.33,+1.00]；成本降低**22.5%**，延迟降低**26.6%**。这个结论替代了V2基于单次240题测试得出的“Task-Aware超过Strong”表述，更保守，也更可信。
 
-### Review-and-Correct 结论
+## 本轮自动优化做了什么
 
-Reflection 触发升级时，Strong 会收到原题、图片/工具定义和 Cheap 候选答案。Strong 必须先独立核验：候选正确则保留，错误才修正。
+### 学习式路由
 
-在 response-only calibrated ablation 触发的 143 次升级中：
+新增的`LearnedQualityGapEstimator`在生成前预测：
 
-| 最终答案策略 | 有效升级 | 有害升级 |
-|---|---:|---:|
-| 直接用 Strong 独立答案覆盖 | 14 | 8 |
-| Strong review-and-correct | 11 | **5** |
+```text
+Strong准确率 - Cheap准确率
+```
 
-Review-and-correct 将 harmful escalation 降低了 **37.5%**，但也少修正了 3 道题，因此它有效但不完美。加入全部任务特征的校准器在 60 道验证题上发生过拟合；项目保留这个负结果，没有根据测试集继续调参。
+它使用问题TF-IDF和/或可观察结构特征、Ridge正则化以及五折out-of-fold预测选择阈值。路由器看不到数据集名称和测试答案。
 
-完整产物位于 [`results/qwen3.5-v2-study`](results/qwen3.5-v2-study) 和 [`results/qwen3.5-v2-ablation`](results/qwen3.5-v2-ablation)。
+结果有价值，但不是单向成功：
+
+- V3组合特征：78.67%，比Always Strong节省43.2%成本，Strong使用率36%。
+- V3 text-only消融：79.33%，与Always Strong相同，成本低32.7%。
+- 在全新V4上确认text-only：80.00%，Always Strong为83.33%，成本仍低32.2%。
+
+因此V3的优势没有完全复现。450道开发题中只有52题能区分两个模型，学习目标过于稀疏。项目保留这个负结果，没有继续利用V4调参。
+
+### Reflection与review
+
+Reflection在开发集上拟合response-only正确率校准器，并使用外层交叉验证概率选择升级阈值。触发升级时，Strong收到原题、图片/工具和Cheap候选，候选正确则保留，错误才修改。
+
+这个机制没有稳定优于直接使用Strong。V4中，review和盲目Strong覆盖都是7次有效升级、5次有害升级；V3中review反而少修正错误并多产生一次有害升级。模型通过提示词自报的confidence还出现跨数据漂移，因此Reflection保留为agentic诊断，而不是主方法。
 
 ## 实验设计
 
-### 任务集
-
-构建脚本确定性地生成 300 道题，并按任务大类分层划分为 20% 验证集和 80% 测试集。
+每个300题数据块包括：
 
 | 任务大类 | 数量 | 数据来源 | 评估方式 |
 |---|---:|---|---|
-| 文本推理 | 100 | GSM8K 40、CommonsenseQA 30、BBH 逻辑题 30 | 数值或选择题准确率 |
-| 视觉语言 | 100 | ScienceQA 40、ChartQA 20、OCR-VQA 20、20 个 MMMU 学科 | 选择题、精确匹配或数值容差 |
-| 智能体工具调用 | 100 | BFCL V4 simple 50、BFCL V4 multiple 50 | 函数名与必需参数匹配 |
+| 文本推理 | 100 | GSM8K 40、CommonsenseQA 30、BBH逻辑题30 | 数值或选择题准确率 |
+| 视觉语言 | 100 | ScienceQA 40、ChartQA 20、OCR-VQA 20、MMMU 20 | 选择题、精确匹配或数值容差 |
+| 工具调用 | 100 | BFCL V4 simple 50、multiple 50 | 函数名与必需参数匹配 |
 
-数据来源：[GSM8K](https://huggingface.co/datasets/openai/gsm8k)、[CommonsenseQA](https://huggingface.co/datasets/tau/commonsense_qa)、[BIG-Bench Hard](https://github.com/suzgunmirac/BIG-Bench-Hard)、[ScienceQA](https://huggingface.co/datasets/derek-thomas/ScienceQA)、[ChartQA](https://huggingface.co/datasets/docintel/ChartQA)、[OCR-VQA](https://huggingface.co/datasets/pppop7/OCR-VQA)、[MMMU](https://huggingface.co/datasets/MMMU/MMMU) 和 [BFCL](https://github.com/ShishirPatil/gorilla/tree/main/berkeley-function-call-leaderboard)。
+V3和V4按一半规模保持相同比例。问题、选项、工具Schema和图片内容哈希共同保证开发集、V3与V4之间零重叠。
 
 ### 模型池
-
-两款模型都支持文本、图片和工具调用，因此实验研究的是模型能力与路由，而不是人为制造“文本模型/VLM”边界。
 
 | 角色 | 模型 | Temperature | 最大输出 | Thinking |
 |---|---|---:|---:|---|
 | Cheap | `qwen3.5-35b-a3b` | 0.2 | 256 tokens | 关闭 |
 | Strong | `qwen3.5-397b-a17b` | 0.2 | 256 tokens | 关闭 |
 
-### 四种路由策略
+两个模型都支持文本、图片和工具，因此研究的是能力与成本选择，而不是人为制造“文本模型/VLM”边界。
 
-1. **Always Cheap**：所有任务都交给 Cheap。
-2. **Always Strong**：所有任务都交给 Strong。
-3. **Task-Aware Router**：根据推理时可观察的题目长度、数字、数学/逻辑线索、图片、图表/OCR线索、选项数、工具数、必需参数数和 Schema 深度计算透明风险分数。它不读取 `dataset`、`source`、`rule_tier` 或标准答案，风险阈值只在验证集选择。
-4. **Reflection Router**：先调用 Cheap，再用交叉验证 Platt 校准估计 `P(Cheap 回答正确)`，并结合格式和 self-check 信号决定是否升级。升级后由 Strong 执行 review-and-correct，而不是直接覆盖。
+### 五种策略
 
-阈值选择以验证集准确率最高为第一目标，同准确率时选择成本和 Strong 使用率更低的方案。测试集标签不参与阈值选择。
+1. **Always Cheap**：固定使用Cheap。
+2. **Always Strong**：固定使用Strong。
+3. **Handcrafted Task-Aware**：使用可观察线索和冻结风险阈值2。
+4. **Learned Cost-Aware**：从开发集的模型成对表现学习质量差。
+5. **Calibrated Reflection**：先调用Cheap，再按校准概率决定是否让Strong审查修正。
 
-## 复现实验
+手工特征的具体常数是heuristic，不是论文推导。学习式路由是更原则化的替代方案，但在当前小样本、稀疏分歧条件下，手工基线反而泛化更稳定。
+
+## 文献关系
+
+本项目参考[Hybrid LLM](https://arxiv.org/abs/2404.14618)、[RouteLLM](https://arxiv.org/abs/2406.18665)和[LLM Routing with Benchmark Datasets](https://arxiv.org/abs/2309.15789)中的质量差/偏好路由；Reflection对应[FrugalGPT](https://arxiv.org/abs/2305.05176)和[AutoMix](https://arxiv.org/abs/2310.12963)的级联思路。[Deep Model Reassembly](https://arxiv.org/abs/2210.17409)支持性能与资源约束下的模型复用动机，但不能作为手工问题阈值的直接依据。
+
+详细文献综述和导师视角审查见[`docs/literature_review.md`](docs/literature_review.md)与[`docs/supervisor_review.zh-CN.md`](docs/supervisor_review.zh-CN.md)。
+
+## 复现
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[study,test]"
 python scripts/build_manifest.py
+python scripts/build_v3_data.py
 python -m pytest
 ```
 
-无需 API Key 的 smoke test：
+配置`QWEN_API_KEY`和`QWEN_BASE_URL`后：
 
 ```bash
-python -m routerbench_mini.cli \
-  --manifest data/mini_manifest.jsonl \
-  --models configs/models.mock.yaml \
-  --out results/mock
+python scripts/run_v3_study.py --study-version V3 --workers 8
+python scripts/run_v3_ablations.py --workers 8
+python scripts/build_v3_data.py \
+  --development data/manifest.jsonl data/v3_test.jsonl \
+  --out data/v4_test.jsonl --image-dir data/v4_images \
+  --seed 20260713 --version v4
+python scripts/run_v3_study.py \
+  --development data/manifest.jsonl data/v3_test.jsonl \
+  --test data/v4_test.jsonl --out results/qwen3.5-v4-study \
+  --learned-features text --study-version V4 --workers 8
+python scripts/aggregate_replications.py
 ```
 
-运行真实 V2：
+API Key不会写入仓库。响应缓存在`.cache/routerbench/`，缓存身份包括任务、模型、提示词版本、solve/review模式、候选答案和解码参数。
 
-```bash
-export QWEN_API_KEY="your-api-key"
-export QWEN_BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1"
-python scripts/probe_models.py
-python scripts/run_study.py --workers 8
-python scripts/run_ablations.py --workers 8
-```
+## 局限
 
-不要把 API Key 写入 YAML 或提交到 Git。模型名、价格和解码参数位于 [`configs/models.qwen_api.yaml`](configs/models.qwen_api.yaml)。响应按照任务、模型、提示词版本、solve/review 模式、候选答案和解码参数缓存在 `.cache/routerbench/`。
+- 当前只使用一个服务商、一个模型系列和600道采样任务。
+- 两模型真正产生不同正确性的开发样本很少，限制学习式路由。
+- TF-IDF不读取图像内容，未来应使用轻量多模态编码器。
+- 提示词自报confidence不能替代token-level或模型内部不确定性。
+- API延迟包含远端排队波动，成本结论比延迟结论稳定。
+- BFCL只检查第一个规范函数调用及其必需参数。
+- 公共数据集revision尚未固定，未来重建可能需要更新脚本。
 
-## 仓库结构
-
-```text
-configs/                       模型与成本配置
-data/                          300 题清单及验证/测试划分
-docs/                          实验协议与消融说明
-results/qwen3.5-v2-study/      V2 主表、图与误差分析
-results/qwen3.5-v2-ablation/   Reflection 消融与反事实比较
-scripts/build_manifest.py      数据集构建
-scripts/run_study.py           V2 主实验
-scripts/run_ablations.py       Reflection 消融
-src/routerbench_mini/          Provider、特征、校准、路由和评分
-tests/                         单元测试
-```
-
-## 项目边界
-
-- 这是一个 300 题、单服务商、单模型系列的小型研究项目。
-- 60 道验证题较少，完整特征校准器没有很好泛化。
-- Review-and-correct 减少但没有消除有害改写。
-- 串行 review 可能比单次 Always Strong 更慢。
-- BFCL 评分只检查第一个规范函数调用及其必需参数。
-- 一条被两款 API 在生成前同时拒绝的 OCR-VQA 样本会确定性顺延替换；它不进入评分，也不是按正确率筛选。
-- API 延迟会受服务负载影响，配置价格也可能变化。
-
-完整 V2 分析见 [`docs/research_note.md`](docs/research_note.md)。V1 历史结果保留在 `results/qwen3.5-study/`；由于视觉配比和温度不同，V1 与 V2 不能直接混为同一组实验。
+主要产物位于[`results/qwen3.5-v4-study`](results/qwen3.5-v4-study)，跨复现冻结策略结果位于[`results/qwen3.5-confirmatory`](results/qwen3.5-confirmatory)，V3学习特征消融位于[`results/qwen3.5-v3-ablation`](results/qwen3.5-v3-ablation)。

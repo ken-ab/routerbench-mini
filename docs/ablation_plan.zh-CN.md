@@ -52,3 +52,24 @@ Task-Aware Router 的风险分数由四组特征组成：
 完整特征版本在验证集达到 95%，但测试集没有提升，说明 60 条验证数据不足以稳定拟合较高维特征。response-only 版本泛化更好，但串行 review 增加了延迟。
 
 在 response-only 的 143 次升级中，review-and-correct 将 harmful escalation 从盲目 Strong 覆盖的 8 次降到 5 次，同时 beneficial escalation 从 14 次降到 11 次。它更保守，减少了破坏，也错过了部分修正。
+
+## V3 学习式路由消融
+
+V3新增学习式quality-gap路由，并在同一开发集、同一五折out-of-fold协议下逐项移除特征：
+
+| 版本 | 准确率 | 平均成本 | Strong使用率 |
+|---|---:|---:|---:|
+| Structured only | 78.67% | 0.00039014 | 46.67% |
+| Text only | **79.33%** | 0.00044537 | 54.67% |
+| Text + structured | 78.67% | **0.00037586** | 36.00% |
+
+Text-only在V3匹配Always Strong，因此被预先选为V4确认方案。V4中text-only为80.00%，Always Strong为83.33%。这说明消融结果帮助提出了候选方法，但其准确率优势没有在新测试集复现。
+
+## V3/V4 Reflection复现
+
+| 测试 | Review有效/有害 | Blind Strong有效/有害 | 结论 |
+|---|---:|---:|---|
+| V3 | 5 / 7 | 11 / 6 | review更差 |
+| V4 | 7 / 5 | 7 / 5 | 两者相同 |
+
+因此V2中“review减少有害升级”的结果不能作为稳定结论。后续应使用独立candidate-verdict模型，并将是否接受候选与生成修正答案分开评估。

@@ -103,3 +103,37 @@ class CalibratedConfidenceEstimator:
         if self.include_task_features:
             features.extend(task_feature_vector(task))
         return features
+
+
+def cross_validated_correctness_probabilities(
+    tasks: Sequence[TaskExample],
+    responses: Sequence[ModelResponse],
+    *,
+    include_task_features: bool = False,
+    folds: int = 5,
+) -> list[float]:
+    """Return outer-fold probabilities for threshold selection without in-sample predictions."""
+
+    if len(tasks) < folds or len(tasks) != len(responses):
+        raise ValueError("Cross-validation needs aligned responses and at least one example per fold.")
+
+    from sklearn.model_selection import StratifiedKFold
+
+    labels = [int(is_correct(task, response)) for task, response in zip(tasks, responses)]
+    combined = [
+        f"{task.metadata.get('category', task.task_type)}:{label}"
+        for task, label in zip(tasks, labels)
+    ]
+    counts = {value: combined.count(value) for value in set(combined)}
+    strata = combined if min(counts.values()) >= folds else labels
+    splitter = StratifiedKFold(n_splits=folds, shuffle=True, random_state=42)
+    probabilities = [0.0] * len(tasks)
+    indices = list(range(len(tasks)))
+    for train_indices, validation_indices in splitter.split(indices, strata):
+        estimator = CalibratedConfidenceEstimator(include_task_features=include_task_features).fit(
+            [tasks[index] for index in train_indices],
+            [responses[index] for index in train_indices],
+        )
+        for index in validation_indices:
+            probabilities[index] = estimator.predict_correctness(tasks[index], responses[index])
+    return probabilities

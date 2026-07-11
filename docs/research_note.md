@@ -1,86 +1,97 @@
-# RouterBench-Mini V2 Research Note
+# RouterBench-Mini V4 Research Note
 
 ## Research Question
 
-Can observable task features and validation-calibrated response signals select between a cheap and strong multimodal foundation model under accuracy, cost, and latency constraints? When escalation occurs, can Strong review a Cheap candidate without destroying correct answers?
+Can request-time features or post-response confidence select between a Cheap and Strong multimodal model while preserving accuracy and reducing measured API cost? Do learned routing and review-and-correct generalize to new samples?
 
-## Protocol
+## Protocol Evolution
 
-- 300 tasks: 100 text, 100 vision, and 100 tool use.
-- Vision mix: 40 ScienceQA, 20 ChartQA, 20 OCR-VQA, and one single-image MCQ from each of 20 MMMU subjects.
-- Stratified split: 60 validation and 240 held-out test examples, seed 42.
+- V2: 60 validation and 240 test tasks. Used to identify methodological weaknesses.
+- V3: old 300 tasks become development; 150 new fingerprint-disjoint tasks become held-out test.
+- V3 ablation: combined, structured-only, and text-only quality-gap routers.
+- V4: V3 is added to development after model-family selection; another 150 new tasks form the final confirmation set.
+
+The final V4 protocol therefore has 450 development examples and 150 untouched test examples. Every test block contains 50 text, 50 vision, and 50 tool tasks. Query, options, tool schema, and image bytes are included in leakage fingerprints.
+
+## Models and Decoding
+
 - Cheap: `qwen3.5-35b-a3b`.
 - Strong: `qwen3.5-397b-a17b`.
-- Shared decoding: temperature 0.2, maximum output 256, thinking disabled.
-- Shared prompt and structured output contract; native function calling for tools.
-- Metrics: accuracy, measured token cost, observed latency, escalation, and strong usage.
+- Temperature: 0.2.
+- Maximum output: 256 tokens.
+- Thinking: disabled.
+- Shared structured prompt; native function calling for tools.
 
-Task-Aware uses only request-time observable features. Reflection fits a cross-validated Platt calibrator on validation-only Cheap responses. Thresholds maximize validation accuracy and break ties by cost and strong usage. No test labels are used for threshold selection.
+## Methods
 
-## Main Test Results
+### Handcrafted Task-Aware
 
-| Method | Accuracy | Avg. cost/task (CNY) | Avg. latency (ms) | Strong use |
+The V2 observable-feature score and threshold 2 are frozen across V3 and V4. This is an interpretable heuristic baseline, not a learned router.
+
+### Learned Cost-Aware
+
+For each development task, the target is:
+
+```text
+y = Strong_correct - Cheap_correct, y in {-1, 0, 1}
+```
+
+The estimator combines TF-IDF and/or structured request features with Ridge regression. Thresholds are selected from five-fold out-of-fold scores by maximum development accuracy, breaking ties by measured cost and Strong use. The V3 ablation selected text-only for V4.
+
+### Calibrated Reflection
+
+A response-only logistic/Platt model estimates Cheap correctness from prompted confidence, format validity, and self-check. Threshold selection uses outer-fold probabilities and cached development review outcomes. At test time, only escalated tasks call Strong sequentially.
+
+## V4 Confirmatory Results
+
+| Method | Accuracy | Avg. cost | Avg. latency | Strong use |
 |---|---:|---:|---:|---:|
-| Always Cheap | 0.7667 | 0.00024165 | 1141.09 | 0.0000 |
-| Always Strong | 0.7792 | 0.00065225 | 1782.91 | 1.0000 |
-| Task-Aware Router | **0.8000** | 0.00052408 | 1610.24 | 0.6833 |
-| Full Calibrated Reflection | 0.7667 | 0.00025260 | 1173.84 | 0.0208 |
+| Always Cheap | 0.7867 | 0.00023762 | 1177.61 ms | 0.0000 |
+| Always Strong | **0.8333** | 0.00064448 | 2619.40 ms | 1.0000 |
+| Handcrafted Task-Aware | **0.8267** | 0.00050139 | 1766.81 ms | 0.6600 |
+| Learned Cost-Aware | 0.8000 | **0.00043693** | 2391.25 ms | 0.5000 |
+| Calibrated Reflection | 0.8000 | 0.00047537 | 2202.13 ms | 0.4600 |
 
-Task-Aware is the best main method. Relative to Always Strong, it improves accuracy by 2.08 percentage points, reduces average cost by 19.7%, and reduces latency by 9.7%.
+Task-Aware is the strongest trade-off. Its paired accuracy difference from Always Strong is -0.0067 with a 95% bootstrap interval of [-0.0267, 0.0133]. Its average cost is 22.2% lower.
 
-## Category Results
+## Replicated Frozen Policies
 
-| Category | Cheap | Strong | Task-Aware | Full Reflection |
+Pooling V3 and V4 is valid for Always Cheap, Always Strong, and Task-Aware because these policies remain unchanged:
+
+| Method | Accuracy | 95% accuracy CI | Avg. cost | Avg. latency |
 |---|---:|---:|---:|---:|
-| Text | 68.75% | 76.25% | 76.25% | 68.75% |
-| Vision | 76.25% | 77.50% | 81.25% | 76.25% |
-| Tool | **85.00%** | 80.00% | 82.50% | **85.00%** |
+| Always Cheap | 0.7700 | [0.7200, 0.8167] | 0.00024081 | 934.72 ms |
+| Always Strong | 0.8133 | [0.7667, 0.8567] | 0.00065324 | 2093.65 ms |
+| Task-Aware | 0.8067 | [0.7600, 0.8500] | 0.00050602 | 1535.95 ms |
 
-Strong capacity helps text, while Cheap is better under the strict tool-call scorer. Observable routing benefits from this non-monotonic model relationship.
+The paired Task-Aware-minus-Strong difference is -0.0067 with interval [-0.0233, 0.0100]. Cost savings are 22.5%, and the paired cost-difference interval remains strictly below zero.
 
-## Reflection Ablation
+## Learned Feature Ablation
 
-| Variant | Accuracy | Avg. cost | Avg. latency | Escalation |
-|---|---:|---:|---:|---:|
-| Format only | 76.67% | 0.00024165 | 1141 ms | 0.00% |
-| Raw confidence | 76.67% | 0.00024524 | 1149 ms | 0.42% |
-| Calibrated response only | **79.17%** | 0.00056005 | 2060 ms | 59.58% |
-| Full response + task features | 76.67% | 0.00025260 | 1174 ms | 2.08% |
+On V3:
 
-Response-only calibration is the strongest Reflection variant and exceeds Always Strong by 1.25 percentage points at 14.1% lower API cost. Its latency is higher because Cheap and Strong review are sequential. The full feature calibrator achieved 95% validation accuracy but did not generalize; with only 60 calibration examples, the higher-dimensional feature set overfit.
-
-## Review-and-Correct Counterfactual
-
-For each escalated response-only example, compare the observed review result with a counterfactual that blindly substitutes the independently generated Strong answer:
-
-| Policy | Correct among 143 escalations | Beneficial | Harmful |
+| Variant | Accuracy | Avg. cost | Strong use |
 |---|---:|---:|---:|
-| Blind Strong replacement | 113 | 14 | 8 |
-| Review-and-correct | 113 | 11 | 5 |
+| Structured only | 0.7867 | 0.00039014 | 0.4667 |
+| Text only | **0.7933** | 0.00044537 | 0.5467 |
+| Combined | 0.7867 | **0.00037586** | 0.3600 |
 
-Review-and-correct preserves the same number of correct final answers while reducing harmful escalation by 3 cases, or 37.5%. It is more conservative, but that conservatism also loses 3 beneficial corrections. Of 143 reviews, Strong kept the Cheap candidate 119 times and changed it 24 times.
+Text-only matches Always Strong on V3 and is selected for V4. On V4 it reaches 0.8000 versus Strong's 0.8333. The advantage does not fully replicate.
 
-The change therefore addresses the requested failure mode partially, not completely. A stronger future design would train an explicit candidate-verdict model or use a separate adjudication set; it should not be tuned on the current test results.
+The central data issue is sparse pairwise supervision. Among 450 development tasks, only 31 favor Strong, 21 favor Cheap, and 398 are ties. A linear router can learn broad task patterns but has little evidence about the narrow decision boundary.
 
-## Model Disagreement
+## Reflection and Review
 
-Across the 240 test tasks:
+V4 Reflection escalates 69 tasks. Relative to Cheap, review produces 7 beneficial and 5 harmful changes. Blind independent Strong on the same subset also produces 7 beneficial and 5 harmful outcomes. Review keeps 53 candidates and changes 16.
 
-- Both models correct: 170.
-- Strong fixes Cheap: 17.
-- Cheap is correct while Strong is wrong: 14.
-- Both wrong: 39.
+On V3, review produces 5 beneficial and 7 harmful outcomes, compared with 11 beneficial and 6 harmful for blind Strong. The V2 harmful-change reduction is therefore not robust across replications.
 
-Only 31 tasks distinguish the models, so routing quality depends on identifying a small and asymmetric benefit region. Always Strong is not a reliable oracle, especially for tools.
+Prompted confidence is also miscalibrated under shift. V3's largest 85-example bin has mean predicted correctness 0.535 but empirical Cheap accuracy 0.776. V4 is better aligned after adding V3 development data, but the signal remains coarse.
 
-## Limitations
+## Conclusions
 
-- One provider, one model family, and 300 examples.
-- Only 60 validation examples for thresholding and probability calibration.
-- The current correctness probability is an empirical estimate, not a literal true probability.
-- API latency includes remote service variance.
-- Tool scoring checks one canonical call and required arguments.
-- One OCR-VQA item rejected by both endpoints before generation is deterministically replaced by the next source item and never scored.
-- The response-only ablation was examined after the main test and must be treated as analysis, not a newly selected headline policy.
-
-All main artifacts are under `results/qwen3.5-v2-study/`; ablation and counterfactual tables are under `results/qwen3.5-v2-ablation/`.
+1. The replicated result supports cost-aware reuse: a transparent router retains near-Strong accuracy with about 22.5% lower measured API cost.
+2. The earlier claim that routing exceeds Always Strong does not survive the stricter replication framing.
+3. Learned quality-gap routing reduces Strong use substantially but needs more pairwise-disagreement data to match the handcrafted baseline reliably.
+4. Prompted confidence and review-and-correct are not stable enough to serve as the headline policy.
+5. The most valuable next experiment is larger paired-response collection with multimodal embeddings and repeated model samples.

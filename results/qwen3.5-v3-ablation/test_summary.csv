@@ -1,0 +1,4 @@
+router,total,accuracy,total_cost,avg_cost,avg_latency_ms,escalation_rate,strong_usage_rate
+learned_combined,150,0.7867,0.056379,0.00037586,1030.5,0.0,0.36
+learned_structured_only,150,0.7867,0.05852,0.00039014,1117.32,0.0,0.4667
+learned_text_only,150,0.7933,0.066805,0.00044537,1190.66,0.0,0.5467

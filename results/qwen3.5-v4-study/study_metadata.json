@@ -1,0 +1,76 @@
+{
+  "created_at": "2026-07-11T18:31:07.868628+00:00",
+  "study_version": "V4",
+  "protocol": {
+    "development_examples": 450,
+    "held_out_test_examples": 150,
+    "cross_validation_folds": 5,
+    "learned_feature_mode": "text",
+    "test_used_for_model_or_threshold_selection": false,
+    "threshold_rule": "highest out-of-fold development accuracy; ties by lower cost and strong usage"
+  },
+  "test_distribution": {
+    "categories": {
+      "tool": 50,
+      "text": 50,
+      "vision": 50
+    },
+    "datasets": {
+      "bfcl-multiple": 25,
+      "bbh-logical-deduction": 15,
+      "mmmu": 10,
+      "scienceqa-img": 20,
+      "bfcl-simple_python": 25,
+      "chartqa": 10,
+      "commonsenseqa": 15,
+      "gsm8k": 20,
+      "ocr-vqa": 10
+    }
+  },
+  "models": {
+    "cheap": {
+      "type": "openai_compatible",
+      "model": "qwen3.5-35b-a3b",
+      "base_url_env": "QWEN_BASE_URL",
+      "temperature": 0.2,
+      "max_tokens": 256,
+      "enable_thinking": false,
+      "cache_dir": ".cache/routerbench",
+      "input_price_per_million": 0.4,
+      "output_price_per_million": 3.2,
+      "currency": "CNY"
+    },
+    "strong": {
+      "type": "openai_compatible",
+      "model": "qwen3.5-397b-a17b",
+      "base_url_env": "QWEN_BASE_URL",
+      "temperature": 0.2,
+      "max_tokens": 256,
+      "enable_thinking": false,
+      "cache_dir": ".cache/routerbench",
+      "input_price_per_million": 1.2,
+      "output_price_per_million": 7.2,
+      "currency": "CNY"
+    }
+  },
+  "selected_learned_advantage_threshold": 0.02605838348638479,
+  "selected_reflection_confidence_threshold": 0.75,
+  "learned_router": {
+    "method": "tfidf_structured_ridge_quality_gap",
+    "examples": 450,
+    "alpha": 0.1,
+    "text_features": 1500,
+    "structured_features": [],
+    "strong_beneficial": 31,
+    "cheap_beneficial": 21,
+    "ties": 398
+  },
+  "confidence_calibration": {
+    "method": "cross_validated_platt_scaling",
+    "examples": 450,
+    "folds": 3,
+    "empirical_accuracy": 0.782222,
+    "brier_on_calibration_set": 0.168304,
+    "include_task_features": "false"
+  }
+}

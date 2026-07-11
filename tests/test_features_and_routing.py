@@ -2,10 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from routerbench_mini.calibration import CalibratedConfidenceEstimator, ConfidenceEstimator
+from routerbench_mini.calibration import (
+    CalibratedConfidenceEstimator,
+    ConfidenceEstimator,
+    cross_validated_correctness_probabilities,
+)
 from routerbench_mini.features import observable_task_features, task_risk_score
 from routerbench_mini.providers import ModelResponse
-from routerbench_mini.routers import ReflectionRouter, TaskAwareRouter
+from routerbench_mini.routers import LearnedCostAwareRouter, ReflectionRouter, TaskAwareRouter
+from routerbench_mini.selection import LearnedQualityGapEstimator, cross_validated_advantages
 from routerbench_mini.tasks import TaskExample
 
 
@@ -186,3 +191,64 @@ def test_calibrated_confidence_returns_probability() -> None:
 
     assert 0.0 <= probability <= 1.0
     assert estimator.diagnostics["method"] == "cross_validated_platt_scaling"
+
+
+def test_learned_quality_gap_uses_request_features_and_routes() -> None:
+    tasks = [
+        TaskExample(
+            id=f"task-{index}",
+            dataset="unit",
+            task_type="math" if index % 2 else "mcq",
+            question=f"Shared reasoning question number {index % 3}",
+            answer="4",
+            metadata={"category": "text"},
+        )
+        for index in range(15)
+    ]
+    cheap = [
+        ModelResponse("cheap", "cheap", "5" if index % 3 == 0 else "4", "", 0.5, 1.0)
+        for index in range(15)
+    ]
+    strong = [ModelResponse("strong", "strong", "4", "", 0.8, 2.0) for _ in tasks]
+    estimator = LearnedQualityGapEstimator().fit(tasks, cheap, strong)
+    router = LearnedCostAwareRouter(estimator, advantage_threshold=-1.0)
+
+    decision = router.route(tasks[0], {"cheap": StubProvider("cheap"), "strong": StubProvider("strong")})
+
+    assert decision.selected_role == "strong"
+    assert isinstance(decision.trace["predicted_strong_advantage"], float)
+    assert estimator.diagnostics["strong_beneficial"] == 5
+
+
+def test_outer_fold_predictions_cover_every_example() -> None:
+    tasks = [
+        TaskExample(
+            id=f"task-{index}",
+            dataset="unit",
+            task_type="math",
+            question=f"What is {index} plus one?",
+            answer=str(index + 1),
+            metadata={"category": "text" if index % 2 else "vision"},
+        )
+        for index in range(30)
+    ]
+    cheap = [
+        ModelResponse(
+            "cheap",
+            "cheap",
+            str(index + 1 if index % 4 else -1),
+            "",
+            0.8 if index % 4 else 0.3,
+            1.0,
+            {"self_check_pass": bool(index % 4)},
+        )
+        for index in range(30)
+    ]
+    strong = [ModelResponse("strong", "strong", str(index + 1), "", 0.9, 2.0) for index in range(30)]
+
+    advantages = cross_validated_advantages(tasks, cheap, strong, folds=3)
+    probabilities = cross_validated_correctness_probabilities(tasks, cheap, folds=3)
+
+    assert len(advantages) == len(tasks)
+    assert len(probabilities) == len(tasks)
+    assert all(0.0 <= probability <= 1.0 for probability in probabilities)

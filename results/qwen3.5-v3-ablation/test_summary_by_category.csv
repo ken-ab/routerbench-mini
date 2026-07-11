@@ -1,0 +1,10 @@
+category,router,total,accuracy,total_cost,avg_cost,avg_latency_ms,escalation_rate,strong_usage_rate
+text,learned_combined,50,0.78,0.009975,0.0001995,939.75,0.0,0.44
+text,learned_structured_only,50,0.78,0.013686,0.00027373,1295.63,0.0,0.8
+text,learned_text_only,50,0.82,0.012258,0.00024515,1149.51,0.0,0.66
+tool,learned_combined,50,0.84,0.027779,0.00055558,1099.61,0.0,0.32
+tool,learned_structured_only,50,0.8,0.022749,0.00045498,938.12,0.0,0.16
+tool,learned_text_only,50,0.84,0.032088,0.00064177,1273.73,0.0,0.48
+vision,learned_combined,50,0.74,0.018625,0.0003725,1052.14,0.0,0.32
+vision,learned_structured_only,50,0.78,0.022085,0.0004417,1118.21,0.0,0.44
+vision,learned_text_only,50,0.72,0.022459,0.00044918,1148.74,0.0,0.5

@@ -17,6 +17,7 @@ data = [
 ]
 ml = [
   "scikit-learn>=1.4",
+  "scipy>=1.10",
 ]
 analysis = [
   "matplotlib>=3.9",
@@ -26,11 +27,13 @@ study = [
   "matplotlib>=3.9",
   "pillow>=10.0",
   "scikit-learn>=1.4",
+  "scipy>=1.10",
   "socksio>=1.0",
 ]
 test = [
   "pytest>=8.0",
   "scikit-learn>=1.4",
+  "scipy>=1.10",
 ]
 
 [tool.pytest.ini_options]

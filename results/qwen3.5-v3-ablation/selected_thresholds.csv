@@ -1,0 +1,4 @@
+variant,selected_advantage_threshold
+learned_structured_only,0.01489872166970735
+learned_text_only,0.0013854075704939559
+learned_combined,0.049855810906785786
