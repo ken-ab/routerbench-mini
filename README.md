@@ -2,148 +2,182 @@
 
 [中文说明](README.zh-CN.md)
 
-This is a deliberately small personal research report, not a paper-level algorithmic contribution. It records a few days of work moving from an engineering prototype toward a more disciplined experimental process.
+This is a small personal experimental report that cannot independently support a paper-level contribution. It records a small experiment in my gradual return from engineering practice to research.
 
-RouterBench-Mini studies when a multimodal agent should reuse a cheaper model and when it should invoke a stronger one. Two models from the same Qwen 3.5 family solve text, vision, and tool-use tasks under one prompt, decoding, scoring, and measured-cost pipeline. It does not propose a new foundation algorithm: TF-IDF, Ridge, logistic regression, probability calibration, and cross-validation are all classical methods. The value of this demo is in turning model routing into a reproducible small benchmark and documenting design mistakes, negative results, and corrections honestly.
+I started from a direct question. Sending every request to a cheap model can hurt accuracy on difficult tasks, while always using a strong model keeps API cost and latency unnecessarily high. RouterBench-Mini studies this model-selection problem: when is the cheap model sufficient, and when is the stronger model worth invoking?
 
-## From V1 to V4
+Every stage uses two unified multimodal models from the same Qwen 3.5 family under shared prompts, decoding settings, scoring rules, and measured API costs. The project develops through V1 to V4. Each stage retains its mistakes, results, and motivation for the next step instead of reporting only the best run.
 
-V1 through V4 are not four increasingly complex models. V1 and V2 develop the method, V3 explores feature choices, and V4 is a confirmatory evaluation after V3 method selection. The routing policy and the credibility of the protocol evolve together.
+## Research Question and Shared Setup
 
-| Stage | Data protocol | Main change | Failure or conclusion |
+### Model pool
+
+| Role | Model | Position | Input/output price (CNY/million tokens) |
+|---|---|---|---:|
+| Cheap | `qwen3.5-35b-a3b` | smaller and less expensive unified multimodal model | 0.4 / 3.2 |
+| Strong | `qwen3.5-397b-a17b` | larger and stronger but more expensive unified multimodal model | 1.2 / 7.2 |
+
+Both models handle text, images, and tools. The experiment therefore studies capacity selection within one shared capability boundary rather than imposing an artificial text-model/VLM split. V1 uses `temperature=0`; V2 through V4 use `temperature=0.2`; every stage limits output to 256 tokens and disables thinking.
+
+### Three task families and five task formats
+
+| Family | Task format | Sources | Scoring |
 |---|---|---|---|
-| V1 prototype | 300 tasks; 60 validation/240 test | dataset-label rules; raw-confidence Reflection | label leakage; incomparable confidence scales; Reflection below Cheap |
-| V2 correction | rebuilt 300 tasks; 60 validation/240 test | observable features, risk threshold, Platt calibration, review-and-correct | calibrator and threshold overfit the same 60 tasks |
-| V3 exploration | old 300 development; new held-out set A of 150 | quality-gap labels, TF-IDF/Ridge, five-fold OOF, feature ablation | text-only matches Strong on A, but only as a candidate result |
-| V4 confirmation | old 300 plus A for development; new held-out set B of 150 | freeze the text-only training recipe and confirm on new data | cost gain remains; matching Strong does not replicate |
+| Text | mathematical reasoning | GSM8K | final numeric match |
+| Text | textual multiple choice | CommonsenseQA, BBH logical deduction | choice accuracy |
+| Vision | visual multiple choice | ScienceQA, MMMU | choice accuracy |
+| Vision | open visual question answering | ChartQA, OCR-VQA | normalized text or numeric tolerance |
+| Tool | function calling | BFCL V4 simple and multiple | function name and gold-required arguments |
 
-### V1: make the real experiment run
+Gold answers are used only by deterministic scoring and are never exposed to the router or either Qwen model. The study compares Always Cheap, Always Strong, Task-Aware, Reflection, and, from V3 onward, Learned Cost-Aware.
 
-V1 uses `qwen3.5-35b-a3b` and `qwen3.5-397b-a17b` with `temperature=0` and a 256-token output limit. Task-Aware reads a preassigned dataset `rule_tier`: GSM8K and logical deduction always use Strong, while CommonsenseQA always uses Cheap. This runs end to end but leaks dataset identity into routing and says little about unseen requests.
+## V1: Rule-Based Baseline
 
-Reflection calls Cheap first, then checks format, prompted confidence, and self-check before optionally calling Strong. Validation selects threshold 0.8, but parseable tool calls receive a hard-coded confidence of 0.75, so every test tool task escalates; some incorrect math answers report 0.95 or 1.0 and are accepted. Test accuracy is 80.00% for Always Cheap, 81.67% for Always Strong, 81.25% for Task-Aware, and 78.75% for Reflection. V1 proves that the pipeline works and that raw confidence is not a common routing scale.
+### Data and architecture
 
-### V2: remove dataset labels and calibrate response trust
+V1 contains 300 tasks, divided into 100 text, 100 vision, and 100 tool tasks, then split into 60 validation and 240 test examples. Text includes 40 GSM8K, 30 CommonsenseQA, and 30 BBH tasks; vision includes 80 ScienceQA, 10 ChartQA, and 10 OCR-VQA tasks; tools include 50 BFCL simple and 50 multiple tasks.
 
-V2 changes temperature to 0.2 and rebalances vision data to 40 ScienceQA, 20 ChartQA, 20 OCR-VQA, and 20 MMMU tasks. Task-Aware no longer reads dataset names; it computes an observable risk score from question length, numbers, math/logic cues, images, choices, and tool-schema complexity, with a validation-selected threshold of 2.0.
+V1 establishes four baselines. Always Cheap and Always Strong bound cost and capacity. Task-Aware reads a preassigned dataset `rule_tier`: for example, GSM8K and logical deduction always use Strong, while CommonsenseQA always uses Cheap. Reflection calls Cheap first and uses answer format, prompted confidence, and self-check to decide whether to escalate to Strong. Its confidence threshold of 0.8 is selected on the 60 validation tasks.
 
-Reflection trains logistic regression on Cheap confidence, format, self-check, and 13 request features, then uses Platt scaling to estimate `P(Cheap answer is correct)`. Strong performs review-and-correct after escalation. Task-Aware reaches 80.00% versus Strong's 77.92%, but Reflection reaches 95.00% on validation and only 76.67% on test. The same 60 validation tasks fit the calibrator and select its threshold; Cheap makes only five errors there, so the full model overfits. A response-only ablation reaches 79.17%, motivating a smaller calibrator and stricter out-of-sample threshold selection later.
+### V1 test results
 
-### V3: learn the model quality gap and ablate features
+| Method | Accuracy | Avg. cost/task (CNY) | Avg. latency | Strong use |
+|---|---:|---:|---:|---:|
+| Always Cheap | 80.00% | 0.00023496 | 707 ms | 0.00% |
+| Always Strong | **81.67%** | 0.00063335 | 1,412 ms | 100.00% |
+| Task-Aware | 81.25% | 0.00044290 | 1,063 ms | 49.17% |
+| Reflection | 78.75% | 0.00057631 | 1,317 ms | 33.33% |
 
-V3 converts the old 300 tasks into development data and creates a fingerprint-disjoint held-out set A of 150. Both models answer every development task, and deterministic scoring produces `y = Strong correct - Cheap correct`. TF-IDF question features and 13 observable structured features feed Ridge to predict the quality gap; five-fold out-of-fold scores select one global escalation threshold without tuning on each example's fitted score.
+V1 exposes two basic problems. First, Task-Aware routes by dataset identity, which leaks information and says little about unseen requests. Second, confidence is not comparable across task formats. A parseable tool call receives a hard-coded 0.75, so every test tool task escalates under the 0.8 threshold; some incorrect math answers report 0.95 or 1.0 and are accepted. Reflection costs almost as much as Strong while falling below Cheap, motivating the redesign in V2.
 
-The Learned Router ablation compares three inputs: Combined reaches 78.67% with 36.00% Strong use; Structured-only reaches 78.67% with 46.67% Strong use; Text-only reaches 79.33% with 54.67% Strong use. Text-only matches Always Strong on set A at 32.7% lower cost and is selected by the accuracy-first rule for confirmation. The difference is one task, so it is a candidate rather than a stable conclusion.
+## V2: Observable Features and Probability Calibration
 
-V3 also makes Reflection response-only and selects its threshold from outer-fold probabilities. It escalates 99/150 tasks but reaches only 74.00% accuracy: review fixes five Cheap errors and damages seven correct Cheap answers. Format, prompted confidence, and self-check remain too weak to verify semantic correctness.
+### What V2 changes
 
-### V4: confirm V3 rather than invent another router
+V2 removes `rule_tier` and limits routing to information observable at inference time. Task-Aware computes a risk score from question length, numbers, math and logic cues, images, choice count, tool count, required arguments, and schema depth. Validation selects a risk threshold of 2.0.
 
-V4 is not a new routing architecture. After method selection, held-out set A joins the old 300 tasks to form 450 development examples; a different fingerprint-disjoint set B of 150 becomes the final untouched confirmation set. The Learned Router freezes the V3-selected text-only recipe, then refits TF-IDF, Ridge, and its OOF threshold on 450 tasks. Reflection is likewise recalibrated on 450 tasks.
+The study still uses 300 tasks and a 60/240 split, but vision is rebalanced to 40 ScienceQA, 20 ChartQA, 20 OCR-VQA, and 20 MMMU examples. Reflection trains logistic regression from Cheap confidence, format, self-check, and 13 request features, then applies Platt scaling to estimate `P(Cheap answer is correct)`. On escalation, Strong receives the original task and Cheap candidate and performs review-and-correct.
 
-Learned Text-only reaches 80.00% on V4 versus Strong's 83.33%. It still reduces cost by 32.2%, but the V3 accuracy match does not replicate. Because V3 and V4 use different test tasks, the apparent move from 79.33% to 80.00% cannot be attributed to increasing development data from 300 to 450; Always Strong itself moves from 79.33% to 83.33%. V4 asks whether the V3-selected policy generalizes: its cost benefit does, while its accuracy result does not fully do so.
+### V2 test results
 
-## Confirmatory Result
+| Method | Accuracy | Avg. cost/task (CNY) | Avg. latency | Strong use |
+|---|---:|---:|---:|---:|
+| Always Cheap | 76.67% | 0.00024165 | 1,141 ms | 0.00% |
+| Always Strong | 77.92% | 0.00065225 | 1,783 ms | 100.00% |
+| **Task-Aware** | **80.00%** | 0.00052408 | 1,610 ms | 68.33% |
+| Reflection Full | 76.67% | **0.00025260** | **1,174 ms** | 2.08% |
+
+Task-Aware exceeds Always Strong in V2, but this claim comes from one 240-task test split. Reflection reaches 95.00% on validation and only 76.67% on test, a clear sign of overfitting.
+
+### V2 Reflection ablation
+
+| Variant | Accuracy | Avg. cost/task (CNY) | Avg. latency | Strong use |
+|---|---:|---:|---:|---:|
+| Format-only | 76.67% | **0.00024165** | **1,141 ms** | 0.00% |
+| Raw confidence | 76.67% | 0.00024524 | 1,149 ms | 0.42% |
+| **Calibrated response-only** | **79.17%** | 0.00056005 | 2,060 ms | 59.58% |
+| Full: response plus 13 request features | 76.67% | 0.00025260 | 1,174 ms | 2.08% |
+
+Cheap makes only five errors among the 60 validation tasks, yet the same small set fits the probability calibrator and selects the escalation threshold. With 13 request features added, the Full calibrator assigns high estimated correctness to many test errors and almost never escalates. Response-only works better, but a larger development set and genuinely out-of-sample threshold selection are still needed. This becomes the direct starting point for V3.
+
+## V3: Learned Quality-Gap Routing
+
+### Literature motivation and architecture
+
+V3 draws on quality-gap prediction in [Hybrid LLM](https://arxiv.org/abs/2404.14618) and pairwise model routing in [RouteLLM](https://arxiv.org/abs/2406.18665), replacing handcrafted difficulty increments with supervised routing. [FrugalGPT](https://arxiv.org/abs/2305.05176) and [AutoMix](https://arxiv.org/abs/2310.12963) motivate the post-response Reflection cascade.
+
+The old 300 tasks become development data, while a fingerprint-disjoint held-out set A adds 150 tasks with 50 text, 50 vision, and 50 tool examples. Learned Cost-Aware follows this pipeline:
+
+```text
+300 development tasks
+  -> Cheap and Strong both answer
+  -> deterministic labels y = Strong correct - Cheap correct
+  -> question TF-IDF plus 13 observable structured features
+  -> Ridge predicts the Strong-minus-Cheap quality gap
+  -> five-fold out-of-fold scores select one global threshold
+  -> route each new set-A task to Cheap or Strong before generation
+```
+
+Strong alone is correct on 18 development tasks, Cheap alone on 14, and the models have the same outcome on 268. The primary V3 Learned Router uses Combined features and threshold 0.04986. Reflection instead fits a response-only Cheap-correctness calibrator and selects threshold 0.65 from outer-fold probabilities.
+
+### V3 main results
+
+| Method | Accuracy | 95% bootstrap CI | Avg. cost/task (CNY) | Avg. latency | Strong use |
+|---|---:|---:|---:|---:|---:|
+| Always Cheap | 75.33% | [68.00, 82.00] | 0.00024400 | 692 ms | 0.00% |
+| Always Strong | **79.33%** | [72.67, 85.33] | 0.00066199 | 1,568 ms | 100.00% |
+| Task-Aware | 78.67% | [72.00, 85.33] | 0.00051066 | 1,305 ms | 65.33% |
+| Learned Combined | 78.67% | [72.00, 85.33] | **0.00037586** | **1,031 ms** | 36.00% |
+| Reflection | 74.00% | [66.67, 81.33] | 0.00063306 | 1,732 ms | 66.00% |
+
+Learned Combined answers one fewer task correctly than Always Strong while making 96 fewer Strong calls and reducing cost by 43.2%. Reflection escalates 99/150 tasks, but review fixes only five Cheap errors and damages seven correct Cheap answers, leaving it below Always Cheap.
+
+### V3 Learned feature ablation
+
+| Feature variant | Accuracy | Avg. cost/task (CNY) | Avg. latency | Strong use |
+|---|---:|---:|---:|---:|
+| Combined: TF-IDF plus 13 structured features | 78.67% | **0.00037586** | **1,031 ms** | **36.00%** |
+| Structured-only | 78.67% | 0.00039014 | 1,117 ms | 46.67% |
+| **Text-only TF-IDF** | **79.33%** | 0.00044537 | 1,191 ms | 54.67% |
+
+Text-only matches Always Strong on set A at 32.7% lower cost and is selected for V4 by the accuracy-first, cost-tiebreak rule. It answers only one more task correctly than Combined while making 28 more Strong calls. This is a candidate to confirm on new data, not a stable conclusion.
+
+## V4: Confirmatory Evaluation
+
+### What V4 resolves
+
+V4 is not a new routing algorithm. After V3 method selection, set A joins the original 300 tasks to form 450 development examples. A different fingerprint-disjoint set B of 150 becomes the final untouched confirmation set.
+
+The Learned Router freezes the V3-selected text-only training recipe, then refits TF-IDF, Ridge, and the five-fold threshold of 0.02606 on 450 tasks. Reflection retains the same response-only architecture, recalibrates on 450 tasks, and selects threshold 0.75. The V4 test set is unavailable to feature-mode, model, and threshold selection.
+
+### V4 final results
 
 ![V4 held-out accuracy-cost trade-off](results/qwen3.5-v4-study/pareto.png)
-
-V4 is the final confirmatory set: 450 earlier examples are used for router development, while its 150 examples are fingerprint-disjoint and untouched until evaluation.
 
 | Method | Accuracy | 95% bootstrap CI | Avg. cost/task (CNY) | Avg. latency | Strong use |
 |---|---:|---:|---:|---:|---:|
 | Always Cheap | 78.67% | [72.00, 84.68] | 0.00023762 | 1,178 ms | 0.00% |
 | Always Strong | **83.33%** | [77.33, 89.33] | 0.00064448 | 2,619 ms | 100.00% |
-| **Handcrafted Task-Aware** | **82.67%** | [76.67, 88.00] | 0.00050139 | **1,767 ms** | 66.00% |
-| Learned Cost-Aware | 80.00% | [73.33, 86.00] | **0.00043693** | 2,391 ms | 50.00% |
-| Calibrated Reflection | 80.00% | [73.33, 86.00] | 0.00047537 | 2,202 ms | 46.00% |
+| **Task-Aware** | **82.67%** | [76.67, 88.00] | 0.00050139 | **1,767 ms** | 66.00% |
+| Learned Text-only | 80.00% | [73.33, 86.00] | **0.00043693** | 2,391 ms | 50.00% |
+| Reflection | 80.00% | [73.33, 86.00] | 0.00047537 | 2,202 ms | 46.00% |
 
-The frozen Task-Aware baseline is the most robust trade-off. It is 0.67 percentage points below Always Strong on V4, with a paired 95% difference interval of [-2.67, +1.33] points, while reducing cost by **22.2%** and observed latency by **32.5%**.
+Task-Aware is 0.67 percentage points below Always Strong, with a paired 95% difference interval of [-2.67, +1.33] points, while reducing cost by 22.2% and observed latency by 32.5%. Learned Text-only still reduces cost by 32.2%, but it is 3.33 points below Strong. The V3 accuracy match does not replicate.
 
-## Two Non-Overlapping Held-Out Batches
+The apparent move from 79.33% in V3 to 80.00% in V4 cannot show that increasing development data helps because the test tasks differ; Always Strong itself moves from 79.33% to 83.33%. A valid 300-versus-450 data-scaling study must evaluate both training sizes on the same new test set.
 
-Held-out set A in V3 and set B in V4 each contain 150 non-overlapping tasks with 50 text, 50 vision, and 50 tool-use examples. Set A is later used to select text-only and joins V4 development, so it is no longer the final untouched confirmation set; only set B serves that role. Always Cheap, Always Strong, and Task-Aware remain unchanged across both batches, so the pooled table is only a cross-batch stability check for these frozen policies:
+### Two non-overlapping held-out batches
 
-| Frozen method | Accuracy over 300 tasks across both batches | Avg. cost | Avg. latency | Strong use |
+Sets A and B each contain 150 non-overlapping tasks, but set A participates in text-only selection and later joins V4 development. Only set B is the final untouched confirmation set. The pooled table therefore includes only Always Cheap, Always Strong, and Task-Aware, whose policies remain unchanged between V3 and V4, as a cross-batch stability check.
+
+| Frozen method | Accuracy over 300 tasks across both batches | Avg. cost/task (CNY) | Avg. latency | Strong use |
 |---|---:|---:|---:|---:|
 | Always Cheap | 77.00% | 0.00024081 | 935 ms | 0.00% |
-| Always Strong | 81.33% | 0.00065324 | 2,094 ms | 100.00% |
-| **Handcrafted Task-Aware** | **80.67%** | **0.00050602** | **1,536 ms** | **65.67%** |
+| Always Strong | **81.33%** | 0.00065324 | 2,094 ms | 100.00% |
+| **Task-Aware** | 80.67% | **0.00050602** | **1,536 ms** | 65.67% |
 
-Task-Aware is again 0.67 points below Always Strong; the paired interval is [-2.33, +1.00] points. Its cost is **22.5% lower** and latency **26.6% lower**. This replaces the earlier V2 claim based on one 240-task split with a more conservative replicated conclusion.
+Across both batches, Task-Aware remains 0.67 points below Strong with a paired interval of [-2.33, +1.00] points, while reducing cost by 22.5% and latency by 26.6%. This is more conservative and credible than the V2 statement that Task-Aware exceeds Strong on one split.
 
-## Final Methods and Interpretation
+## What I Learned
 
-### Learned routing
+TF-IDF, Ridge, logistic regression, probability calibration, and cross-validation are classical machine-learning methods and should not be presented as a new routing theory. For me, the useful part of the project is completing one small research iteration: formulate the accuracy-cost question, establish Cheap and Strong controls, discover label leakage and calibration overfitting, add learned routing and ablations, and then use a new confirmation set to overturn an attractive result.
 
-The new `LearnedQualityGapEstimator` predicts `Strong accuracy - Cheap accuracy` before generation. It uses TF-IDF question features and/or observable structured features, Ridge regularization, and five-fold out-of-fold predictions for threshold selection. Dataset names and test labels are unavailable to the router.
-
-The result is informative but mixed:
-
-- V3 combined router: 78.67% accuracy, 43.2% lower cost than Always Strong, 36% Strong use.
-- V3 text-only ablation: 79.33%, exactly matching Always Strong at 32.7% lower cost.
-- V4 confirmation of the selected text-only variant: 80.00% versus Strong's 83.33%, at 32.2% lower cost.
-
-The V3 gain did not fully replicate. Only 52 of 450 development examples distinguish the two models, so the learned target remains sparse. The repository retains this negative result instead of selecting a new policy on V4.
-
-### Reflection and review
-
-Reflection fits a response-only correctness calibrator on development responses and selects its threshold from outer-fold predictions. Strong receives the original task, image/tools, and Cheap candidate, preserving the candidate if correct and changing it only when necessary.
-
-This mechanism is not reliably superior to blind Strong replacement. On V4, review and blind Strong have the same 7 beneficial and 5 harmful escalations. On V3, review produces fewer beneficial and one more harmful escalation. Prompted self-reported confidence also shifts across replications, making it a weak routing signal. Reflection is therefore an agentic diagnostic, not the headline method.
-
-## Final Reflection
-
-This project does not package classical machine learning as a new routing theory. The Learned Router is Ridge over TF-IDF and structured features; Reflection is a logistic-regression probability gate in a two-stage cascade; thresholds are selected empirically by cross-validation. Their algorithmic novelty is limited. The useful part of the exercise is the research process: define reproducible tasks, establish strong and cheap controls, identify leakage and overfitting, run ablations, retain negative results, and challenge an attractive result on a new confirmation set.
-
-The simplest Handcrafted Task-Aware policy is ultimately the most stable. Learned routing is constrained by sparse pairwise model disagreements, while Reflection suffers from shifted prompted confidence and regressions during Strong review. This demo is best read as a small report on moving from development-oriented implementation toward research-oriented evaluation, not as a paper-level contribution.
+The simple Task-Aware policy is ultimately the most stable. Learned routing is limited by sparse Cheap/Strong disagreements, while Reflection is weakened by shifted prompted confidence and regressions during Strong review. This demo is best read as a small personal report on gradually returning from engineering practice to research, not as a paper-level algorithmic contribution.
 
 ## Next Experiments
 
-1. **Collect routing-informative data.** Only 52 of 450 development examples distinguish Cheap from Strong. Future sampling should target harder tasks and model disagreements, and report learning curves instead of mainly adding `y=0` examples.
-2. **Run a controlled data-scaling study.** Train the same router on 300 versus 450 examples and evaluate both on one new frozen test set, keeping features, threshold selection, and model calls identical.
-3. **Improve request representations.** Compare a fixed pretrained text embedding against TF-IDF on the same split, then add a lightweight multimodal or image embedding so pre-generation routing can inspect visual content rather than only `has_image`.
-4. **Optimize an explicit utility.** The current policy maximizes accuracy and uses cost only to break ties. A follow-up should optimize `accuracy - lambda * cost - mu * latency`, or minimize cost under a prespecified accuracy-loss constraint, with the constraint fixed before evaluation.
-5. **Strengthen uncertainty and verification.** Where available, compare token log-probability, entropy, sampling consistency, or an independent verifier against prompted confidence. Keep blind Strong replacement as the counterfactual for review-and-correct.
-6. **Broaden replication.** Add more model tiers, model families, and sampled batches; report paired uncertainty and failures; freeze all policies and hyperparameters before constructing another final confirmation set.
+1. **Collect routing-informative data.** Only 52 of 450 development examples distinguish Cheap from Strong. Future sampling should target harder tasks and model disagreements and report learning curves instead of mainly adding `y=0` examples.
+2. **Run a controlled data-scaling study.** Train the same router on 300 and 450 examples and evaluate both on one new frozen test set with identical features, threshold selection, and model calls.
+3. **Improve request representations.** Compare a fixed pretrained text embedding against TF-IDF on the same split. For vision tasks, add a lightweight multimodal or image embedding so pre-generation routing can inspect image content rather than only `has_image`.
+4. **Optimize an explicit utility.** The current policy prioritizes accuracy and uses cost only to break ties. A follow-up should prespecify `accuracy - lambda * cost - mu * latency`, or minimize cost under a fixed allowable accuracy loss.
+5. **Strengthen uncertainty and verification.** Where available, compare token log-probability, entropy, sampling consistency, or an independent verifier against prompted confidence, while retaining blind Strong replacement as the counterfactual for review.
+6. **Broaden model and data replication.** Add more model tiers, model families, and sampled batches; report paired intervals and failures; freeze all policies and hyperparameters before constructing another final confirmation set.
 
-## Experimental Design
+## Relationship to Prior Work
 
-### Tasks
+In addition to [Hybrid LLM](https://arxiv.org/abs/2404.14618), [RouteLLM](https://arxiv.org/abs/2406.18665), [FrugalGPT](https://arxiv.org/abs/2305.05176), and [AutoMix](https://arxiv.org/abs/2310.12963), which directly motivate V3, [LLM Routing with Benchmark Datasets](https://arxiv.org/abs/2309.15789) provides routing-benchmark context. [Deep Model Reassembly](https://arxiv.org/abs/2210.17409) motivates model reuse under performance and resource constraints but does not directly justify this project's handcrafted thresholds.
 
-Each 300-example block has the same composition:
-
-| Category | Count | Sources | Scoring |
-|---|---:|---|---|
-| Text reasoning | 100 | 40 GSM8K, 30 CommonsenseQA, 30 BBH logical deduction | numeric or multiple-choice accuracy |
-| Vision-language | 100 | 40 ScienceQA, 20 ChartQA, 20 OCR-VQA, 20 MMMU subjects | multiple-choice, exact match, or numeric tolerance |
-| Agentic tool use | 100 | 50 BFCL V4 simple, 50 BFCL V4 multiple | function name and required arguments |
-
-Sets A and B use half-sized blocks with identical proportions. Query, choice, tool-schema, and image-content fingerprints enforce zero overlap among the original 300-task block, set A, and set B.
-
-### Model pool
-
-| Role | Model | Temperature | Max output | Thinking |
-|---|---|---:|---:|---|
-| Cheap | `qwen3.5-35b-a3b` | 0.2 | 256 tokens | disabled |
-| Strong | `qwen3.5-397b-a17b` | 0.2 | 256 tokens | disabled |
-
-Both models support text, images, and tools. The experiment studies capacity selection, not an artificial text-model/VLM boundary.
-
-### Policies
-
-1. **Always Cheap** is the low-cost fixed-model control.
-2. **Always Strong** is the high-capacity fixed-model control.
-3. **Handcrafted Task-Aware** uses transparent request-time cues and a frozen risk threshold of 2.
-4. **Learned Cost-Aware** learns the model-pair quality gap from development responses.
-5. **Calibrated Reflection** calls Cheap first and conditionally asks Strong to review-and-correct.
-
-The handcrafted feature constants are heuristic, not literature-derived. The learned router is the principled alternative; the rule baseline remains useful because it generalizes more stably in this small-data regime.
-
-## Literature Positioning
-
-The project follows quality-gap and preference-based routing in [Hybrid LLM](https://arxiv.org/abs/2404.14618), [RouteLLM](https://arxiv.org/abs/2406.18665), and [LLM Routing with Benchmark Datasets](https://arxiv.org/abs/2309.15789); it treats post-response escalation as a cascade following [FrugalGPT](https://arxiv.org/abs/2305.05176) and [AutoMix](https://arxiv.org/abs/2310.12963). [Deep Model Reassembly](https://arxiv.org/abs/2210.17409) motivates model reuse under performance and resource constraints, but does not justify the handcrafted query thresholds.
-
-See [`docs/literature_review.md`](docs/literature_review.md) and [`docs/supervisor_review.zh-CN.md`](docs/supervisor_review.zh-CN.md) for the detailed critique and method changes.
+See [`docs/literature_review.md`](docs/literature_review.md) and [`docs/supervisor_review.zh-CN.md`](docs/supervisor_review.zh-CN.md) for the detailed literature review and supervisor-style critique.
 
 ## Reproduce
 
@@ -172,16 +206,16 @@ python scripts/run_v3_study.py \
 python scripts/aggregate_replications.py
 ```
 
-Never commit API keys. Responses are cached under `.cache/routerbench/`; cache identity includes task content, model, prompt version, solve/review mode, candidate answer, and decoding settings.
+API keys are never committed. Responses are cached under `.cache/routerbench/`; cache identity includes task content, model, prompt version, solve/review mode, candidate answer, and decoding parameters.
 
 ## Limitations
 
-- The study uses one provider, one model family, and 600 total sampled tasks.
-- The model pair disagrees on few development examples, limiting learned-router sample efficiency.
-- TF-IDF captures textual similarity but not image content; a learned multimodal encoder is future work.
-- Prompted confidence is not a reliable substitute for token-level or internal uncertainty.
+- The study uses one provider, one model family, and 600 sampled tasks.
+- Few development tasks produce different correctness outcomes for the two models, limiting learned routing.
+- TF-IDF does not inspect image content, so pre-generation visual difficulty is represented weakly.
+- Prompted confidence is not a substitute for token-level or internal uncertainty.
 - API latency includes remote queueing variance; cost conclusions are more stable than latency conclusions.
-- BFCL evaluation checks the first canonical function call and required arguments.
-- Public dataset revisions are not pinned, so rebuilding in the future may require version updates.
+- BFCL scoring checks the first canonical function call and arguments required by the gold answer.
+- Public dataset revisions are not pinned, so future rebuilds may require script updates.
 
-Main artifacts are under [`results/qwen3.5-v4-study`](results/qwen3.5-v4-study), replicated frozen-policy results under [`results/qwen3.5-confirmatory`](results/qwen3.5-confirmatory), and V3 learned-feature ablations under [`results/qwen3.5-v3-ablation`](results/qwen3.5-v3-ablation).
+Main artifacts are under [`results/qwen3.5-v4-study`](results/qwen3.5-v4-study), cross-batch frozen-policy results under [`results/qwen3.5-confirmatory`](results/qwen3.5-confirmatory), and V3 feature ablations under [`results/qwen3.5-v3-ablation`](results/qwen3.5-v3-ablation).
