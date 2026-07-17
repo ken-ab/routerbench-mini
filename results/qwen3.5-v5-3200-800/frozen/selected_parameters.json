@@ -1,0 +1,188 @@
+{
+  "learned": {
+    "text_only": {
+      "threshold": -0.27538991425293924,
+      "strong_usage_rate": 0.9346875,
+      "oof_accuracy": 0.7725,
+      "model_file": "learned_text_only.joblib",
+      "model_sha256": "3548eabd12317865553858fd0b7af9e22349c892415c35979de94b0b96a89200",
+      "estimator": {
+        "method": "tfidf_structured_ridge_quality_gap",
+        "examples": 3200,
+        "alpha": 0.1,
+        "tfidf": {
+          "ngram_range": [
+            1,
+            2
+          ],
+          "min_df": 2,
+          "max_df": 1.0,
+          "max_features": 1500,
+          "sublinear_tf": true,
+          "strip_accents": "unicode",
+          "norm": "l2"
+        },
+        "text_features": 1500,
+        "structured_features": [],
+        "strong_beneficial": 288,
+        "cheap_beneficial": 94,
+        "ties": 2818
+      },
+      "oof_scores": {
+        "minimum": -0.832075262154125,
+        "maximum": 1.3441082521019847,
+        "mean": 0.06150749736342079,
+        "standard_deviation": 0.24188444179541346,
+        "correlation_with_target": 0.05480732389304765,
+        "unique_values": 2802
+      },
+      "fold_metrics_file": "development_learned_text_only_fold_metrics.csv"
+    },
+    "structured_only": {
+      "threshold": -0.0028373507836566315,
+      "strong_usage_rate": 0.815,
+      "oof_accuracy": 0.776875,
+      "model_file": "learned_structured_only.joblib",
+      "model_sha256": "c84344de19fd5f833f7842b12c7fa90aff10da8723cbf8198904887c89bf7975",
+      "estimator": {
+        "method": "tfidf_structured_ridge_quality_gap",
+        "examples": 3200,
+        "alpha": 0.1,
+        "tfidf": {
+          "ngram_range": [
+            1,
+            2
+          ],
+          "min_df": 2,
+          "max_df": 1.0,
+          "max_features": 1500,
+          "sublinear_tf": true,
+          "strip_accents": "unicode",
+          "norm": "l2"
+        },
+        "text_features": 0,
+        "structured_features": [
+          "chart_cue",
+          "choice_count",
+          "has_image",
+          "is_math",
+          "is_multiple_choice",
+          "is_tool",
+          "logic_cue",
+          "numeric_mentions",
+          "ocr_cue",
+          "question_words",
+          "required_arg_count",
+          "schema_depth",
+          "tool_count"
+        ],
+        "strong_beneficial": 288,
+        "cheap_beneficial": 94,
+        "ties": 2818
+      },
+      "oof_scores": {
+        "minimum": -0.4589756643500885,
+        "maximum": 0.27760237488363126,
+        "mean": 0.06049390184254553,
+        "standard_deviation": 0.05768410994330364,
+        "correlation_with_target": 0.13122943225985462,
+        "unique_values": 2344
+      },
+      "fold_metrics_file": "development_learned_structured_only_fold_metrics.csv"
+    },
+    "combined": {
+      "threshold": -0.3086174230926812,
+      "strong_usage_rate": 0.945625,
+      "oof_accuracy": 0.773125,
+      "model_file": "learned_combined.joblib",
+      "model_sha256": "05ae4e80242d4bfb731152219959b939abff3cadb2a745507b7f76e804756b50",
+      "estimator": {
+        "method": "tfidf_structured_ridge_quality_gap",
+        "examples": 3200,
+        "alpha": 0.1,
+        "tfidf": {
+          "ngram_range": [
+            1,
+            2
+          ],
+          "min_df": 2,
+          "max_df": 1.0,
+          "max_features": 1500,
+          "sublinear_tf": true,
+          "strip_accents": "unicode",
+          "norm": "l2"
+        },
+        "text_features": 1500,
+        "structured_features": [
+          "chart_cue",
+          "choice_count",
+          "has_image",
+          "is_math",
+          "is_multiple_choice",
+          "is_tool",
+          "logic_cue",
+          "numeric_mentions",
+          "ocr_cue",
+          "question_words",
+          "required_arg_count",
+          "schema_depth",
+          "tool_count"
+        ],
+        "strong_beneficial": 288,
+        "cheap_beneficial": 94,
+        "ties": 2818
+      },
+      "oof_scores": {
+        "minimum": -0.8968446046549886,
+        "maximum": 1.3661846092846823,
+        "mean": 0.06091757023397647,
+        "standard_deviation": 0.24466480476468366,
+        "correlation_with_target": 0.05635864542614831,
+        "unique_values": 2828
+      },
+      "fold_metrics_file": "development_learned_combined_fold_metrics.csv"
+    }
+  },
+  "reflection": {
+    "threshold": 0.75,
+    "strong_usage_rate": 0.665,
+    "oof_accuracy": 0.7634375,
+    "model_file": "reflection_calibrator.joblib",
+    "model_sha256": "71f7f576aaa55c6cc66fe262b640d861297a2ce5d106f9437c9e9da0295d4b11",
+    "calibrator": {
+      "method": "cross_validated_platt_scaling",
+      "examples": 3200,
+      "folds": 3,
+      "empirical_accuracy": 0.715313,
+      "brier_on_calibration_set": 0.198647,
+      "include_task_features": "false",
+      "logistic_regression_c": 0.5,
+      "calibration": "sigmoid",
+      "inner_folds": 3
+    },
+    "oof_probabilities": {
+      "minimum": 0.0018104346194175718,
+      "maximum": 0.8549411511410043,
+      "mean": 0.7153179226945618,
+      "standard_deviation": 0.0683417641785516,
+      "correlation_with_target": 0.14873405596737693,
+      "unique_values": 40
+    },
+    "mean_probability_when_correct": 0.7217305,
+    "mean_probability_when_wrong": 0.69920552,
+    "brier_score": 0.19913712,
+    "review_effects": {
+      "kept_correct": 2222,
+      "beneficial": 219,
+      "still_wrong": 692,
+      "harmful": 67
+    }
+  },
+  "threshold_rule": "highest_oof_accuracy_among_non_degenerate_then_lowest_cost_and_strong_rate",
+  "allowed_strong_rate": {
+    "minimum": 0.05,
+    "maximum": 0.95
+  },
+  "cross_validation_folds": 5,
+  "fold_ids_from_manifest": true
+}

@@ -1,0 +1,262 @@
+{
+  "development_examples": 3200,
+  "test_examples": 800,
+  "exact_fingerprint_overlap": 0,
+  "test_exact_overlap_with_legacy_600": 0,
+  "source_identity_overlap": 0,
+  "image_id_overlap": 0,
+  "image_sha256_overlap": 0,
+  "template_group_overlap": 0,
+  "overlapping_template_groups": [],
+  "question_cosine_threshold": 0.95,
+  "combined_cosine_threshold": 0.98,
+  "blocking_near_duplicate_count": 0,
+  "blocking_invariant_overlap_count": 0,
+  "blocking_overlap_count": 0,
+  "blocking_near_duplicates": [],
+  "highest_question_matches": [
+    {
+      "test_id": "v5:ocr_vqa:train:1558535918:q0",
+      "development_id": "v5:ocr_vqa:train:751356166:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:scienceqa:test:3152",
+      "development_id": "v5:scienceqa:test:2867",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:scienceqa:test:2108",
+      "development_id": "v5:scienceqa:test:2605",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:1591795893:q0",
+      "development_id": "v5:ocr_vqa:train:857851780:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:scienceqa:test:1893",
+      "development_id": "v5:scienceqa:test:2605",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:1878348450:q0",
+      "development_id": "v5:ocr_vqa:train:751356166:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:743400526:q0",
+      "development_id": "v5:ocr_vqa:train:857851780:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:155738486X:q0",
+      "development_id": "v5:ocr_vqa:train:857851780:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:scienceqa:test:1335",
+      "development_id": "v5:scienceqa:test:3121",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:scienceqa:test:2501",
+      "development_id": "v5:scienceqa:test:3947",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:scienceqa:test:2097",
+      "development_id": "v5:scienceqa:test:2054",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:scienceqa:test:3555",
+      "development_id": "v5:scienceqa:test:2362",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:scienceqa:test:1864",
+      "development_id": "v5:scienceqa:test:1015",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:1558322787:q0",
+      "development_id": "v5:ocr_vqa:train:751356166:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:scienceqa:test:1342",
+      "development_id": "v5:scienceqa:test:1003",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:1590480376:q0",
+      "development_id": "v5:ocr_vqa:train:1423419545:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:470479078:q0",
+      "development_id": "v5:ocr_vqa:train:751356166:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:865478066:q0",
+      "development_id": "v5:ocr_vqa:train:857851780:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:scienceqa:test:1559",
+      "development_id": "v5:scienceqa:test:775",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:scienceqa:test:1820",
+      "development_id": "v5:scienceqa:test:1810",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    }
+  ],
+  "highest_combined_matches": [
+    {
+      "test_id": "v5:ocr_vqa:train:1558535918:q0",
+      "development_id": "v5:ocr_vqa:train:751356166:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:1591795893:q0",
+      "development_id": "v5:ocr_vqa:train:857851780:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:1878348450:q0",
+      "development_id": "v5:ocr_vqa:train:751356166:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:743400526:q0",
+      "development_id": "v5:ocr_vqa:train:857851780:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:155738486X:q0",
+      "development_id": "v5:ocr_vqa:train:857851780:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:scienceqa:test:1335",
+      "development_id": "v5:scienceqa:test:2231",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:scienceqa:test:2097",
+      "development_id": "v5:scienceqa:test:2630",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:scienceqa:test:3555",
+      "development_id": "v5:scienceqa:test:2362",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:1558322787:q0",
+      "development_id": "v5:ocr_vqa:train:751356166:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:1590480376:q0",
+      "development_id": "v5:ocr_vqa:train:1423419545:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:470479078:q0",
+      "development_id": "v5:ocr_vqa:train:751356166:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:865478066:q0",
+      "development_id": "v5:ocr_vqa:train:857851780:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:scienceqa:test:1820",
+      "development_id": "v5:scienceqa:test:1810",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:470825766:q0",
+      "development_id": "v5:ocr_vqa:train:857851780:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:1557663211:q0",
+      "development_id": "v5:ocr_vqa:train:751356166:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:124695132:q0",
+      "development_id": "v5:ocr_vqa:train:1423419545:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:123849039:q0",
+      "development_id": "v5:ocr_vqa:train:1423419545:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:1590780930:q0",
+      "development_id": "v5:ocr_vqa:train:751356166:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:1590306295:q0",
+      "development_id": "v5:ocr_vqa:train:751356166:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    },
+    {
+      "test_id": "v5:ocr_vqa:train:1426306989:q0",
+      "development_id": "v5:ocr_vqa:train:857851780:q0",
+      "similarity": 1.0,
+      "distinct_visual_pair": true
+    }
+  ],
+  "bfcl_schema_overlap_count": 0
+}

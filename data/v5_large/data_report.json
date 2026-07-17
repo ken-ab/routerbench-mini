@@ -1,0 +1,557 @@
+{
+  "version": "V5-3200-800",
+  "selection_seed": 20260717,
+  "fold_seed": 20260718,
+  "allocation": {
+    "gsm8k": {
+      "candidate_pool": 1060,
+      "development_standard": 400,
+      "development_hard": 25,
+      "test_standard": 80,
+      "test_hard": 25
+    },
+    "commonsenseqa": {
+      "candidate_pool": 780,
+      "development_standard": 300,
+      "development_hard": 15,
+      "test_standard": 60,
+      "test_hard": 15
+    },
+    "bbh": {
+      "candidate_pool": 840,
+      "development_standard": 300,
+      "development_hard": 30,
+      "test_standard": 60,
+      "test_hard": 30,
+      "group_holdout": true,
+      "candidate_groups": 27,
+      "reserved_test_groups": 5,
+      "reserved_test_pool": 166,
+      "test_group_ids": [
+        "bbh:boolean_expressions",
+        "bbh:date_understanding",
+        "bbh:dyck_languages",
+        "bbh:navigate",
+        "bbh:tracking_shuffled_objects_seven_objects"
+      ]
+    },
+    "scienceqa": {
+      "candidate_pool": 1020,
+      "development_standard": 400,
+      "development_hard": 15,
+      "test_standard": 80,
+      "test_hard": 15
+    },
+    "mmmu": {
+      "candidate_pool": 580,
+      "development_standard": 200,
+      "development_hard": 25,
+      "test_standard": 40,
+      "test_hard": 25
+    },
+    "chartqa": {
+      "candidate_pool": 540,
+      "development_standard": 200,
+      "development_hard": 15,
+      "test_standard": 40,
+      "test_hard": 15
+    },
+    "ocr_vqa": {
+      "candidate_pool": 540,
+      "development_standard": 200,
+      "development_hard": 15,
+      "test_standard": 40,
+      "test_hard": 15
+    },
+    "bfcl_simple": {
+      "candidate_pool": 800,
+      "development_standard": 500,
+      "development_hard": 20,
+      "test_standard": 100,
+      "test_hard": 20,
+      "group_holdout": true,
+      "candidate_groups": 682,
+      "reserved_test_groups": 110,
+      "reserved_test_pool": 160,
+      "test_group_ids": [
+        "bfcl_simple:component:034443bc681b9401",
+        "bfcl_simple:component:0431395736d348e4",
+        "bfcl_simple:component:04e5728855a6f854",
+        "bfcl_simple:component:0526f68817365cb6",
+        "bfcl_simple:component:090b3a8695b6cc18",
+        "bfcl_simple:component:0b8bb7010151f98a",
+        "bfcl_simple:component:0c4cd40f79c67324",
+        "bfcl_simple:component:0ce65d3a1849b8c7",
+        "bfcl_simple:component:11ea8d8ba327bd5f",
+        "bfcl_simple:component:12ae6c423c851b80",
+        "bfcl_simple:component:15ef993dc38937de",
+        "bfcl_simple:component:1789991926a6f3eb",
+        "bfcl_simple:component:1825eff4b04f2ced",
+        "bfcl_simple:component:18cdb9380bb1bb46",
+        "bfcl_simple:component:19f6e525d36d1a88",
+        "bfcl_simple:component:1a3299f57a5f781d",
+        "bfcl_simple:component:1aad28787dd5838a",
+        "bfcl_simple:component:1e71e34cb31b39d0",
+        "bfcl_simple:component:213efbc2808686d4",
+        "bfcl_simple:component:21664d1a0bdeb7ab",
+        "bfcl_simple:component:2273eda3afd31f9d",
+        "bfcl_simple:component:28cf7d4c90e76985",
+        "bfcl_simple:component:2c99db921f687c71",
+        "bfcl_simple:component:34c4e5ef65f89b5d",
+        "bfcl_simple:component:389a5be883754e3e",
+        "bfcl_simple:component:3c3b4fb10493dd0d",
+        "bfcl_simple:component:3deecbdae81b6708",
+        "bfcl_simple:component:3ea2ec0d486127ab",
+        "bfcl_simple:component:3f580ea2946c7bf0",
+        "bfcl_simple:component:41aa58efec067287",
+        "bfcl_simple:component:4661dae0ec018b58",
+        "bfcl_simple:component:47304d59d4b0f007",
+        "bfcl_simple:component:4d0611e6421c4118",
+        "bfcl_simple:component:4d6b0af6cf671cdf",
+        "bfcl_simple:component:4df1cd544cc56b19",
+        "bfcl_simple:component:4ef435f8f858ea7d",
+        "bfcl_simple:component:4f25e6f2107563fb",
+        "bfcl_simple:component:5002a4df0875b627",
+        "bfcl_simple:component:5052f901bf94354e",
+        "bfcl_simple:component:55cec62ec14349cb",
+        "bfcl_simple:component:577d8f35dbd133e6",
+        "bfcl_simple:component:59dfd0494c3914d9",
+        "bfcl_simple:component:5b27ff8a6c9661ee",
+        "bfcl_simple:component:5b7bafecb4c4184f",
+        "bfcl_simple:component:5d1a51c4219756af",
+        "bfcl_simple:component:5f63f7c20e519996",
+        "bfcl_simple:component:60f25fa0b617b2f9",
+        "bfcl_simple:component:6193f532500333c2",
+        "bfcl_simple:component:62b194eb16dc29f9",
+        "bfcl_simple:component:62e77e99f404fad0",
+        "bfcl_simple:component:656d8de93cfa64dd",
+        "bfcl_simple:component:6a8b44cce5176aee",
+        "bfcl_simple:component:6cd198aed52b8156",
+        "bfcl_simple:component:6d909452bb7c467b",
+        "bfcl_simple:component:72d8291d691a0f31",
+        "bfcl_simple:component:7380c7ad7b84411c",
+        "bfcl_simple:component:73dfb5038cccb3a9",
+        "bfcl_simple:component:7d7fda6e62af8a23",
+        "bfcl_simple:component:7e2b6d86f27f3cc8",
+        "bfcl_simple:component:80d93c5e94cf2ff3",
+        "bfcl_simple:component:8119bf873bb4ba6c",
+        "bfcl_simple:component:8267f0d97cfe8b6a",
+        "bfcl_simple:component:8332e49130089b98",
+        "bfcl_simple:component:853fd328564c3782",
+        "bfcl_simple:component:85e4f0f5c0cfa4db",
+        "bfcl_simple:component:8774581781d8c8d6",
+        "bfcl_simple:component:88e3bf9e872152b0",
+        "bfcl_simple:component:8a6addf6ac2fb76d",
+        "bfcl_simple:component:8e785caf37559b5f",
+        "bfcl_simple:component:921c4e7c7cdb145d",
+        "bfcl_simple:component:953869e8eeadff38",
+        "bfcl_simple:component:960b14304315bafb",
+        "bfcl_simple:component:9b5513e1cf40366f",
+        "bfcl_simple:component:9c7feba627d7918f",
+        "bfcl_simple:component:9d23b320cd926489",
+        "bfcl_simple:component:9dadbdefe249c6d1",
+        "bfcl_simple:component:a270b451b6b342a4",
+        "bfcl_simple:component:a347fcbfbaaef537",
+        "bfcl_simple:component:a37486a42986b396",
+        "bfcl_simple:component:a3a25dcdaf7fc10a",
+        "bfcl_simple:component:a551044d7431974d",
+        "bfcl_simple:component:a6c880ea0da3a763",
+        "bfcl_simple:component:a8b23cd77079a63c",
+        "bfcl_simple:component:b032cf621062ef46",
+        "bfcl_simple:component:b21e6b166843422c",
+        "bfcl_simple:component:b60770455940ffd2",
+        "bfcl_simple:component:b6909658984af058",
+        "bfcl_simple:component:b821642f4ca36576",
+        "bfcl_simple:component:b87a00e86b9d95e7",
+        "bfcl_simple:component:ba2ab1975091f151",
+        "bfcl_simple:component:bff2f92ff5881f89",
+        "bfcl_simple:component:c220cdca353a9903",
+        "bfcl_simple:component:c579070c34aa22ac",
+        "bfcl_simple:component:ca383da04d7d7ae0",
+        "bfcl_simple:component:cddeed77fab00819",
+        "bfcl_simple:component:ce43f6ad94c46702",
+        "bfcl_simple:component:cfced13f851c0a6b",
+        "bfcl_simple:component:d0af53f03b9191e0",
+        "bfcl_simple:component:d4c2ecad63aab67f",
+        "bfcl_simple:component:e2cd7d6ccbee91ca",
+        "bfcl_simple:component:e7aed8186a796c30",
+        "bfcl_simple:component:e8dd0aa9c3f2aac0",
+        "bfcl_simple:component:e974a1f0daea30c6",
+        "bfcl_simple:component:ed0a440c32c31d46",
+        "bfcl_simple:component:eeb87d8d769eca90",
+        "bfcl_simple:component:f5406406f91b9b1f",
+        "bfcl_simple:component:f847732e09a4a3f4",
+        "bfcl_simple:component:fd07e87314dc98d6",
+        "bfcl_simple:component:fd9d3c8e586bbb88",
+        "bfcl_simple:component:fe06a9aaa0ba4257"
+      ]
+    },
+    "bfcl_multiple": {
+      "candidate_pool": 1234,
+      "development_standard": 500,
+      "development_hard": 40,
+      "test_standard": 100,
+      "test_hard": 40,
+      "group_holdout": true,
+      "candidate_groups": 455,
+      "reserved_test_groups": 62,
+      "reserved_test_pool": 180,
+      "test_group_ids": [
+        "bfcl_multiple:component:01285ced585dae09",
+        "bfcl_multiple:component:033cad241cf8d898",
+        "bfcl_multiple:component:0543755d0cfbf018",
+        "bfcl_multiple:component:0cb9e35c56977718",
+        "bfcl_multiple:component:1089157b937fd2fb",
+        "bfcl_multiple:component:1091569f193e557e",
+        "bfcl_multiple:component:1642a19fde1d98fc",
+        "bfcl_multiple:component:1851ce3248e3e6cd",
+        "bfcl_multiple:component:1bae8100a2c67fd9",
+        "bfcl_multiple:component:1cbe493eb9f45fb9",
+        "bfcl_multiple:component:1f3f88bd9203be3c",
+        "bfcl_multiple:component:2596fa94015d1582",
+        "bfcl_multiple:component:28c970c20bfd1953",
+        "bfcl_multiple:component:2a7e68d5df99a648",
+        "bfcl_multiple:component:2ae756ec988543ec",
+        "bfcl_multiple:component:2bf6736d97691418",
+        "bfcl_multiple:component:2c81f941ed8d29b4",
+        "bfcl_multiple:component:309c74da7b1bdc08",
+        "bfcl_multiple:component:32ae049a5afe1ba4",
+        "bfcl_multiple:component:381804ee22d130df",
+        "bfcl_multiple:component:39c423aea60dd14e",
+        "bfcl_multiple:component:39ef3389d85dc766",
+        "bfcl_multiple:component:3ba147241a1a0188",
+        "bfcl_multiple:component:40b7122ea02fdc36",
+        "bfcl_multiple:component:42d792739ff5666d",
+        "bfcl_multiple:component:472a605c80c401cc",
+        "bfcl_multiple:component:4a63cbf67bf2b12a",
+        "bfcl_multiple:component:4b0b445e9e63175e",
+        "bfcl_multiple:component:6ca9e3a7204cde4a",
+        "bfcl_multiple:component:6d37537b7bad7351",
+        "bfcl_multiple:component:6ed687f3b86adf67",
+        "bfcl_multiple:component:6ee8b0d011fb01b8",
+        "bfcl_multiple:component:75973c18f78f7d3c",
+        "bfcl_multiple:component:8396b99902bdcb88",
+        "bfcl_multiple:component:8571fb82d53033ff",
+        "bfcl_multiple:component:96cd296d12d5b8a2",
+        "bfcl_multiple:component:98b72ddff1c43d19",
+        "bfcl_multiple:component:9fa36677efc76085",
+        "bfcl_multiple:component:a04eecd04806c572",
+        "bfcl_multiple:component:a1c29002d12008ec",
+        "bfcl_multiple:component:a50d9ab50bce1538",
+        "bfcl_multiple:component:af670dbf079bcab6",
+        "bfcl_multiple:component:b517bcc399ff1210",
+        "bfcl_multiple:component:b612a776ae644ad9",
+        "bfcl_multiple:component:b8a7460dc3d41134",
+        "bfcl_multiple:component:b8ce885c5415833a",
+        "bfcl_multiple:component:bb6fe93e32105249",
+        "bfcl_multiple:component:c46aba7bd4f00a12",
+        "bfcl_multiple:component:c92c4dd7be0951c0",
+        "bfcl_multiple:component:cfa7bf975d01bda2",
+        "bfcl_multiple:component:cfb24bff5a0d8444",
+        "bfcl_multiple:component:e02870fb86550e95",
+        "bfcl_multiple:component:e19120a213aa8185",
+        "bfcl_multiple:component:e31a13f28f9d6d5a",
+        "bfcl_multiple:component:e36b301d62fbb35b",
+        "bfcl_multiple:component:e762f50ffdb4481b",
+        "bfcl_multiple:component:eae218df23e26541",
+        "bfcl_multiple:component:f0385ea024961227",
+        "bfcl_multiple:component:f3c0dfe8d4c78931",
+        "bfcl_multiple:component:f767ffb50894aae5",
+        "bfcl_multiple:component:f8e225bd66273955",
+        "bfcl_multiple:component:fecad8675611672a"
+      ]
+    }
+  },
+  "development": {
+    "total": 3200,
+    "task_family": {
+      "text": 1070,
+      "tool": 1060,
+      "vision": 1070
+    },
+    "dataset": {
+      "bbh": 330,
+      "bfcl_multiple": 540,
+      "bfcl_simple": 520,
+      "chartqa": 215,
+      "commonsenseqa": 315,
+      "gsm8k": 425,
+      "mmmu": 225,
+      "ocr_vqa": 215,
+      "scienceqa": 415
+    },
+    "source_dataset": {
+      "BFCL_v4_live_multiple": 458,
+      "BFCL_v4_live_simple": 142,
+      "BFCL_v4_multiple": 82,
+      "BFCL_v4_simple_java": 67,
+      "BFCL_v4_simple_javascript": 33,
+      "BFCL_v4_simple_python": 278,
+      "derek-thomas/ScienceQA": 415,
+      "docintel/ChartQA": 215,
+      "lmms-lab/MMMU": 225,
+      "openai/gsm8k": 425,
+      "pppop7/OCR-VQA": 215,
+      "suzgunmirac/BIG-Bench-Hard": 330,
+      "tau/commonsense_qa": 315
+    },
+    "difficulty": {
+      "hard": 200,
+      "standard": 3000
+    },
+    "source_split": {
+      "BFCL_v4_live_multiple:BFCL_v4_live_multiple": 458,
+      "BFCL_v4_live_simple:BFCL_v4_live_simple": 142,
+      "BFCL_v4_multiple:BFCL_v4_multiple": 82,
+      "BFCL_v4_simple_java:BFCL_v4_simple_java": 67,
+      "BFCL_v4_simple_javascript:BFCL_v4_simple_javascript": 33,
+      "BFCL_v4_simple_python:BFCL_v4_simple_python": 278,
+      "derek-thomas/ScienceQA:test": 415,
+      "docintel/ChartQA:test": 215,
+      "lmms-lab/MMMU:validation": 225,
+      "openai/gsm8k:test": 425,
+      "pppop7/OCR-VQA:train": 215,
+      "suzgunmirac/BIG-Bench-Hard:causal_judgement": 17,
+      "suzgunmirac/BIG-Bench-Hard:disambiguation_qa": 15,
+      "suzgunmirac/BIG-Bench-Hard:formal_fallacies": 13,
+      "suzgunmirac/BIG-Bench-Hard:geometric_shapes": 19,
+      "suzgunmirac/BIG-Bench-Hard:hyperbaton": 14,
+      "suzgunmirac/BIG-Bench-Hard:logical_deduction_five_objects": 14,
+      "suzgunmirac/BIG-Bench-Hard:logical_deduction_seven_objects": 22,
+      "suzgunmirac/BIG-Bench-Hard:logical_deduction_three_objects": 14,
+      "suzgunmirac/BIG-Bench-Hard:movie_recommendation": 11,
+      "suzgunmirac/BIG-Bench-Hard:multistep_arithmetic_two": 23,
+      "suzgunmirac/BIG-Bench-Hard:object_counting": 13,
+      "suzgunmirac/BIG-Bench-Hard:penguins_in_a_table": 9,
+      "suzgunmirac/BIG-Bench-Hard:reasoning_about_colored_objects": 27,
+      "suzgunmirac/BIG-Bench-Hard:ruin_names": 17,
+      "suzgunmirac/BIG-Bench-Hard:salient_translation_error_detection": 11,
+      "suzgunmirac/BIG-Bench-Hard:snarks": 6,
+      "suzgunmirac/BIG-Bench-Hard:sports_understanding": 18,
+      "suzgunmirac/BIG-Bench-Hard:temporal_sequences": 14,
+      "suzgunmirac/BIG-Bench-Hard:tracking_shuffled_objects_five_objects": 14,
+      "suzgunmirac/BIG-Bench-Hard:tracking_shuffled_objects_three_objects": 13,
+      "suzgunmirac/BIG-Bench-Hard:web_of_lies": 14,
+      "suzgunmirac/BIG-Bench-Hard:word_sorting": 12,
+      "tau/commonsense_qa:validation": 315
+    },
+    "folds": {
+      "0": {
+        "total": 640,
+        "task_family": {
+          "text": 214,
+          "tool": 212,
+          "vision": 214
+        },
+        "difficulty": {
+          "hard": 40,
+          "standard": 600
+        },
+        "dataset": {
+          "bbh": 66,
+          "bfcl_multiple": 108,
+          "bfcl_simple": 104,
+          "chartqa": 43,
+          "commonsenseqa": 63,
+          "gsm8k": 85,
+          "mmmu": 45,
+          "ocr_vqa": 43,
+          "scienceqa": 83
+        }
+      },
+      "1": {
+        "total": 640,
+        "task_family": {
+          "text": 214,
+          "tool": 212,
+          "vision": 214
+        },
+        "difficulty": {
+          "hard": 40,
+          "standard": 600
+        },
+        "dataset": {
+          "bbh": 66,
+          "bfcl_multiple": 108,
+          "bfcl_simple": 104,
+          "chartqa": 43,
+          "commonsenseqa": 63,
+          "gsm8k": 85,
+          "mmmu": 45,
+          "ocr_vqa": 43,
+          "scienceqa": 83
+        }
+      },
+      "2": {
+        "total": 640,
+        "task_family": {
+          "text": 214,
+          "tool": 212,
+          "vision": 214
+        },
+        "difficulty": {
+          "hard": 40,
+          "standard": 600
+        },
+        "dataset": {
+          "bbh": 66,
+          "bfcl_multiple": 108,
+          "bfcl_simple": 104,
+          "chartqa": 43,
+          "commonsenseqa": 63,
+          "gsm8k": 85,
+          "mmmu": 45,
+          "ocr_vqa": 43,
+          "scienceqa": 83
+        }
+      },
+      "3": {
+        "total": 640,
+        "task_family": {
+          "text": 214,
+          "tool": 212,
+          "vision": 214
+        },
+        "difficulty": {
+          "hard": 40,
+          "standard": 600
+        },
+        "dataset": {
+          "bbh": 66,
+          "bfcl_multiple": 108,
+          "bfcl_simple": 104,
+          "chartqa": 43,
+          "commonsenseqa": 63,
+          "gsm8k": 85,
+          "mmmu": 45,
+          "ocr_vqa": 43,
+          "scienceqa": 83
+        }
+      },
+      "4": {
+        "total": 640,
+        "task_family": {
+          "text": 214,
+          "tool": 212,
+          "vision": 214
+        },
+        "difficulty": {
+          "hard": 40,
+          "standard": 600
+        },
+        "dataset": {
+          "bbh": 66,
+          "bfcl_multiple": 108,
+          "bfcl_simple": 104,
+          "chartqa": 43,
+          "commonsenseqa": 63,
+          "gsm8k": 85,
+          "mmmu": 45,
+          "ocr_vqa": 43,
+          "scienceqa": 83
+        }
+      }
+    }
+  },
+  "test": {
+    "total": 800,
+    "task_family": {
+      "text": 270,
+      "tool": 260,
+      "vision": 270
+    },
+    "dataset": {
+      "bbh": 90,
+      "bfcl_multiple": 140,
+      "bfcl_simple": 120,
+      "chartqa": 55,
+      "commonsenseqa": 75,
+      "gsm8k": 105,
+      "mmmu": 65,
+      "ocr_vqa": 55,
+      "scienceqa": 95
+    },
+    "source_dataset": {
+      "BFCL_v4_live_multiple": 132,
+      "BFCL_v4_live_simple": 61,
+      "BFCL_v4_multiple": 8,
+      "BFCL_v4_simple_java": 12,
+      "BFCL_v4_simple_javascript": 7,
+      "BFCL_v4_simple_python": 40,
+      "derek-thomas/ScienceQA": 95,
+      "docintel/ChartQA": 55,
+      "lmms-lab/MMMU": 65,
+      "openai/gsm8k": 105,
+      "pppop7/OCR-VQA": 55,
+      "suzgunmirac/BIG-Bench-Hard": 90,
+      "tau/commonsense_qa": 75
+    },
+    "difficulty": {
+      "hard": 200,
+      "standard": 600
+    },
+    "source_split": {
+      "BFCL_v4_live_multiple:BFCL_v4_live_multiple": 132,
+      "BFCL_v4_live_simple:BFCL_v4_live_simple": 61,
+      "BFCL_v4_multiple:BFCL_v4_multiple": 8,
+      "BFCL_v4_simple_java:BFCL_v4_simple_java": 12,
+      "BFCL_v4_simple_javascript:BFCL_v4_simple_javascript": 7,
+      "BFCL_v4_simple_python:BFCL_v4_simple_python": 40,
+      "derek-thomas/ScienceQA:test": 95,
+      "docintel/ChartQA:test": 55,
+      "lmms-lab/MMMU:validation": 65,
+      "openai/gsm8k:test": 105,
+      "pppop7/OCR-VQA:train": 55,
+      "suzgunmirac/BIG-Bench-Hard:boolean_expressions": 17,
+      "suzgunmirac/BIG-Bench-Hard:date_understanding": 18,
+      "suzgunmirac/BIG-Bench-Hard:dyck_languages": 14,
+      "suzgunmirac/BIG-Bench-Hard:navigate": 11,
+      "suzgunmirac/BIG-Bench-Hard:tracking_shuffled_objects_seven_objects": 30,
+      "tau/commonsense_qa:validation": 75
+    }
+  },
+  "source_versions": {
+    "gsm8k": {
+      "repository": "openai/gsm8k",
+      "version": "740312add88f781978c0658806c59bc2815b9866",
+      "split": "test"
+    },
+    "commonsenseqa": {
+      "repository": "tau/commonsense_qa",
+      "version": "94630fe30dad47192a8546eb75f094926d47e155",
+      "split": "validation"
+    },
+    "bbh": {
+      "repository": "suzgunmirac/BIG-Bench-Hard",
+      "version": "9ee07bd481feebf959a6b59d61ea57bdcf30964d",
+      "split": "official_json_tasks"
+    },
+    "scienceqa": {
+      "repository": "derek-thomas/ScienceQA",
+      "version": "f18b0a70359ebfb41f658fd564208d0355b013f4",
+      "split": "test"
+    },
+    "mmmu": {
+      "repository": "lmms-lab/MMMU",
+      "version": "364f2e2eb107b36e07ff4c5a15f5947a759cef47",
+      "split": "validation"
+    },
+    "chartqa": {
+      "repository": "docintel/ChartQA",
+      "version": "8af361fb04d780e9e73e0ac02f3d48f747ec53c4",
+      "split": "test"
+    },
+    "ocr_vqa": {
+      "repository": "pppop7/OCR-VQA",
+      "version": "caf625ea5c5865d494bc19d5be8a52ac3d50d06f",
+      "split": "train"
+    },
+    "bfcl": {
+      "repository": "ShishirPatil/gorilla",
+      "version": "6ea57973c7a6097fd7c5915698c54c17c5b1b6c8",
+      "split": "BFCL_v4_official_json"
+    }
+  },
+  "difficulty_selection": "Intrinsic source metadata and observable complexity only; no Cheap/Strong output was generated before selection.",
+  "bfcl_quota_note": "Static BFCL V4 simple_python/multiple contain only 400/200 rows. The official V4 simple language variants and live_simple/live_multiple files supply the remaining unique rows."
+}

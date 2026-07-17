@@ -1,0 +1,30 @@
+{
+  "test_cheap_solve": {
+    "logical_calls": 800,
+    "request_attempts": 800,
+    "prompt_tokens": 387121,
+    "completion_tokens": 24574,
+    "total_tokens": 411695,
+    "estimated_cost": 0.2334852,
+    "observed_latency_ms": 578031.76
+  },
+  "test_strong_solve": {
+    "logical_calls": 800,
+    "request_attempts": 801,
+    "prompt_tokens": 387121,
+    "completion_tokens": 24291,
+    "total_tokens": 411412,
+    "estimated_cost": 0.6394404,
+    "observed_latency_ms": 1054599.92
+  },
+  "test_strong_review": {
+    "logical_calls": 800,
+    "request_attempts": 964,
+    "prompt_tokens": 427016,
+    "completion_tokens": 27715,
+    "total_tokens": 454731,
+    "estimated_cost": 0.7119672,
+    "observed_latency_ms": 1317379.93
+  },
+  "note": "All 800 review outputs were precomputed once for matched-random and oracle counterfactuals; strategy cost tables count only calls selected by each policy."
+}

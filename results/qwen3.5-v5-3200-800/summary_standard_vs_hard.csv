@@ -1,0 +1,25 @@
+strategy,display_name,slice_type,slice_value,total,accuracy,total_cost,avg_cost,total_latency_ms,avg_latency_ms,strong_usage_rate,total_strong_calls,total_cheap_calls,prompt_tokens,completion_tokens,accuracy_ci_low,accuracy_ci_high,random_accuracy_std
+always_cheap,Always Cheap,difficulty_group,hard,200,0.495,0.0738844,0.000369422,160380.04,801.9,0.0,0,200,127743,7121,0.425,0.565,
+always_cheap,Always Cheap,difficulty_group,standard,600,0.745,0.1596008,0.0002660013,417651.66,696.09,0.0,0,600,259378,17453,0.71,0.78,
+always_strong,Always Strong,difficulty_group,hard,200,0.525,0.2043756,0.001021878,277599.12,1388.0,1.0,200,0,127743,7095,0.455,0.59,
+always_strong,Always Strong,difficulty_group,standard,600,0.795,0.4350648,0.000725108,777000.71,1295.0,1.0,600,0,259378,17196,0.763333,0.825,
+global_oracle,Global Oracle,difficulty_group,hard,200,0.575,0.0817516,0.000408758,168854.05,844.27,0.08,16,184,127743,7133,0.505,0.645,
+global_oracle,Global Oracle,difficulty_group,standard,600,0.825,0.1746776,0.0002911293,445294.43,742.16,0.08,48,552,259378,17412,0.795,0.853333,
+learned_combined,Learned Combined,difficulty_group,hard,200,0.525,0.2016724,0.001008362,271277.1,1356.39,0.955,191,9,127743,7096,0.455,0.595,
+learned_combined,Learned Combined,difficulty_group,standard,600,0.785,0.4244008,0.0007073347,760759.36,1267.93,0.96,576,24,259378,17208,0.751667,0.818333,
+learned_structured_only,Learned Structured-only,difficulty_group,hard,200,0.51,0.1769804,0.000884902,260253.58,1301.27,0.875,175,25,127743,7101,0.44,0.58,
+learned_structured_only,Learned Structured-only,difficulty_group,standard,600,0.78666667,0.3245448,0.000540908,693613.13,1156.02,0.78,468,132,259378,17551,0.751667,0.818333,
+learned_text_only,Learned Text-only,difficulty_group,hard,200,0.525,0.2013716,0.001006858,270325.28,1351.63,0.95,190,10,127743,7096,0.455,0.595,
+learned_text_only,Learned Text-only,difficulty_group,standard,600,0.785,0.421468,0.0007024467,758083.92,1263.47,0.95166667,571,29,259378,17239,0.751667,0.816667,
+oracle_learned_rate,Oracle@Learned Rate,difficulty_group,hard,200,0.575,0.2003828,0.001001914,272100.38,1360.5,0.95,190,10,127743,7101,0.505,0.645,
+oracle_learned_rate,Oracle@Learned Rate,difficulty_group,standard,600,0.825,0.4281368,0.0007135613,764938.95,1274.9,0.96166667,577,23,259378,17195,0.793333,0.853333,
+oracle_reflection_rate,Oracle@Reflection Rate,difficulty_group,hard,200,0.545,0.2509996,0.001254998,402645.39,2013.23,0.7,140,200,236843,13537,0.475,0.615,
+oracle_reflection_rate,Oracle@Reflection Rate,difficulty_group,standard,600,0.8,0.5278232,0.0008797053,1070309.5,1783.85,0.665,399,600,476266,32447,0.766667,0.831667,
+reflection,Reflection,difficulty_group,hard,200,0.53,0.165928,0.00082964,368127.2,1840.64,0.7,140,200,184814,10393,0.465,0.6,
+reflection,Reflection,difficulty_group,standard,600,0.78333333,0.3721376,0.0006202293,1032603.35,1721.01,0.665,399,600,381508,26617,0.748333,0.815042,
+task_aware,Frozen Task-Aware,difficulty_group,hard,200,0.515,0.1936252,0.000968126,265899.15,1329.5,0.895,179,21,127743,7100,0.445,0.585,
+task_aware,Frozen Task-Aware,difficulty_group,standard,600,0.79,0.3566848,0.0005944747,640966.7,1068.28,0.63333333,380,220,259378,17175,0.756667,0.82,
+random_learned_rate,Random@Learned Rate,difficulty_group,hard,200,0.5234,,0.0009956027,,1365.015,0.95995,191.99,8.01,,,0.512375,0.535,0.0054717456
+random_learned_rate,Random@Learned Rate,difficulty_group,standard,600,0.7924666666,,0.0007060412,,1270.0449,0.95835,575.01,24.99,,,0.78666667,0.7975416665,0.002733333
+random_reflection_rate,Random@Reflection Rate,difficulty_group,hard,200,0.5191,,0.0011187994,,1930.5416,0.6723,134.46,200.0,,,0.5,0.537625,0.0095493455
+random_reflection_rate,Random@Reflection Rate,difficulty_group,standard,600,0.7695499998,,0.0008167174,,1799.5192,0.6742333334,404.54,600.0,,,0.75833333,0.77833333,0.0049264311

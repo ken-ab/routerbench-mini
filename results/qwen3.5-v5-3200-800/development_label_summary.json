@@ -1,0 +1,17 @@
+{
+  "examples": 3200,
+  "quality_gap_counts": {
+    "-1": 94,
+    "0": 2818,
+    "1": 288
+  },
+  "pair_outcomes": {
+    "cheap_correct_strong_correct": 2195,
+    "cheap_correct_strong_wrong": 94,
+    "cheap_wrong_strong_correct": 288,
+    "cheap_wrong_strong_wrong": 623
+  },
+  "nonzero_quality_gap": 382,
+  "strong_beneficial": 288,
+  "cheap_beneficial": 94
+}

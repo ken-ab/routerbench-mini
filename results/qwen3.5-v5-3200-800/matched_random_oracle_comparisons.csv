@@ -1,0 +1,3 @@
+strategy,matched_random,matched_oracle,strong_call_budget,strong_usage_rate,strategy_accuracy,matched_random_mean_accuracy,gain_over_random,gain_over_random_ci_low,gain_over_random_ci_high,random_ge_strategy_p,matched_oracle_accuracy,regret_to_matched_oracle
+learned_combined,random_learned_rate,oracle_learned_rate,767,0.95875,0.72,0.7252,-0.0052,-0.01,-0.00059375,1.0,0.7625,0.0425
+reflection,random_reflection_rate,oracle_reflection_rate,539,0.67375,0.72,0.7069375,0.0130625,0.005,0.02321875,0.00990099,0.73625,0.01625

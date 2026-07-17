@@ -1,0 +1,4 @@
+strategy,display_name,slice_type,slice_value,total,accuracy,total_cost,avg_cost,total_latency_ms,avg_latency_ms,strong_usage_rate,total_strong_calls,total_cheap_calls,prompt_tokens,completion_tokens,accuracy_ci_low,accuracy_ci_high,accuracy_gap_vs_always_strong,cost_reduction_vs_always_strong,latency_reduction_vs_always_strong
+learned_text_only,Learned Text-only,all,all,800,0.72,0.6228396,0.0007785495,1028409.2,1285.51,0.95125,761,39,387121,24335,0.68875,0.75,-0.0075,0.02596145,0.02483596
+learned_structured_only,Learned Structured-only,all,all,800,0.7175,0.5015252,0.0006269065,953866.71,1192.33,0.80375,643,157,387121,24652,0.685,0.7475,-0.01,0.21568109,0.09552058
+learned_combined,Learned Combined,all,all,800,0.72,0.6260732,0.0007825915,1032036.46,1290.05,0.95875,767,33,387121,24304,0.68875,0.75125,-0.0075,0.02090453,0.021392

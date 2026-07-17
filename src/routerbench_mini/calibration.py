@@ -26,8 +26,18 @@ class RawConfidenceEstimator:
 class CalibratedConfidenceEstimator:
     """Estimate P(cheap answer is correct) from validation-only evidence."""
 
-    def __init__(self, *, include_task_features: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        include_task_features: bool = True,
+        logistic_regression_c: float = 0.5,
+        calibration: str = "sigmoid",
+        inner_folds: int = 3,
+    ) -> None:
         self.include_task_features = include_task_features
+        self.logistic_regression_c = logistic_regression_c
+        self.calibration = calibration
+        self.inner_folds = inner_folds
         self._model: object | None = None
         self._fallback_probability = 0.5
         self.diagnostics: dict[str, float | int | str] = {
@@ -66,12 +76,12 @@ class CalibratedConfidenceEstimator:
             ) from exc
 
         features = [self._feature_vector(task, response) for task, response in zip(tasks, responses)]
-        folds = min(3, minority_count)
+        folds = min(self.inner_folds, minority_count)
         base_model = make_pipeline(
             StandardScaler(),
-            LogisticRegression(C=0.5, max_iter=1000, random_state=42),
+            LogisticRegression(C=self.logistic_regression_c, max_iter=1000, random_state=42),
         )
-        model = CalibratedClassifierCV(base_model, method="sigmoid", cv=folds)
+        model = CalibratedClassifierCV(base_model, method=self.calibration, cv=folds)
         model.fit(features, labels)
         self._model = model
 
@@ -84,6 +94,9 @@ class CalibratedConfidenceEstimator:
             "empirical_accuracy": round(sum(labels) / len(labels), 6),
             "brier_on_calibration_set": round(brier, 6),
             "include_task_features": str(self.include_task_features).lower(),
+            "logistic_regression_c": self.logistic_regression_c,
+            "calibration": self.calibration,
+            "inner_folds": folds,
         }
         return self
 
@@ -111,15 +124,50 @@ def cross_validated_correctness_probabilities(
     *,
     include_task_features: bool = False,
     folds: int = 5,
+    logistic_regression_c: float = 0.5,
+    calibration: str = "sigmoid",
+    inner_folds: int = 3,
 ) -> list[float]:
     """Return outer-fold probabilities for threshold selection without in-sample predictions."""
 
     if len(tasks) < folds or len(tasks) != len(responses):
         raise ValueError("Cross-validation needs aligned responses and at least one example per fold.")
 
+    labels = [int(is_correct(task, response)) for task, response in zip(tasks, responses)]
+    probabilities = [0.0] * len(tasks)
+    for train_indices, validation_indices in _fold_splits(tasks, labels, folds):
+        estimator = CalibratedConfidenceEstimator(
+            include_task_features=include_task_features,
+            logistic_regression_c=logistic_regression_c,
+            calibration=calibration,
+            inner_folds=inner_folds,
+        ).fit(
+            [tasks[index] for index in train_indices],
+            [responses[index] for index in train_indices],
+        )
+        for index in validation_indices:
+            probabilities[index] = estimator.predict_correctness(tasks[index], responses[index])
+    return probabilities
+
+
+def _fold_splits(
+    tasks: Sequence[TaskExample], labels: Sequence[int], folds: int
+) -> list[tuple[list[int], list[int]]]:
+    frozen = [task.fold_id for task in tasks]
+    if all(value is not None for value in frozen):
+        fold_values = sorted({int(value) for value in frozen if value is not None})
+        if fold_values != list(range(folds)):
+            raise ValueError(f"Frozen fold IDs must be 0..{folds - 1}; got {fold_values}")
+        return [
+            (
+                [index for index, value in enumerate(frozen) if int(value) != fold],
+                [index for index, value in enumerate(frozen) if int(value) == fold],
+            )
+            for fold in fold_values
+        ]
+
     from sklearn.model_selection import StratifiedKFold
 
-    labels = [int(is_correct(task, response)) for task, response in zip(tasks, responses)]
     combined = [
         f"{task.metadata.get('category', task.task_type)}:{label}"
         for task, label in zip(tasks, labels)
@@ -127,13 +175,8 @@ def cross_validated_correctness_probabilities(
     counts = {value: combined.count(value) for value in set(combined)}
     strata = combined if min(counts.values()) >= folds else labels
     splitter = StratifiedKFold(n_splits=folds, shuffle=True, random_state=42)
-    probabilities = [0.0] * len(tasks)
     indices = list(range(len(tasks)))
-    for train_indices, validation_indices in splitter.split(indices, strata):
-        estimator = CalibratedConfidenceEstimator(include_task_features=include_task_features).fit(
-            [tasks[index] for index in train_indices],
-            [responses[index] for index in train_indices],
-        )
-        for index in validation_indices:
-            probabilities[index] = estimator.predict_correctness(tasks[index], responses[index])
-    return probabilities
+    return [
+        (list(train_indices), list(validation_indices))
+        for train_indices, validation_indices in splitter.split(indices, strata)
+    ]

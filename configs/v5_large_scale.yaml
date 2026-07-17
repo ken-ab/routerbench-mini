@@ -1,0 +1,139 @@
+version: V5-3200-800
+selection_seed: 20260717
+fold_seed: 20260718
+random_baseline_seed: 20260719
+cross_validation_folds: 5
+random_baseline_runs: 100
+
+paths:
+  root: data/v5_large
+  development_manifest: data/v5_large/development_manifest.jsonl
+  test_manifest: data/v5_large/test_manifest.jsonl
+  image_dir: data/v5_large/images
+  data_report: data/v5_large/data_report.json
+  overlap_report: data/v5_large/overlap_report.json
+  manifest_hashes: data/v5_large/manifest_hashes.json
+  output_dir: results/qwen3.5-v5-3200-800
+  freeze_dir: results/qwen3.5-v5-3200-800/frozen
+
+sources:
+  gsm8k:
+    repository: openai/gsm8k
+    version: 740312add88f781978c0658806c59bc2815b9866
+    split: test
+    license_note: Dataset card reports MIT license.
+  commonsenseqa:
+    repository: tau/commonsense_qa
+    version: 94630fe30dad47192a8546eb75f094926d47e155
+    split: validation
+    license_note: Preserve source attribution; questions are not copied outside the local manifest.
+  bbh:
+    repository: suzgunmirac/BIG-Bench-Hard
+    version: 9ee07bd481feebf959a6b59d61ea57bdcf30964d
+    split: official_json_tasks
+    license_note: Apache-2.0 repository; retain task filename and original index.
+  scienceqa:
+    repository: derek-thomas/ScienceQA
+    version: f18b0a70359ebfb41f658fd564208d0355b013f4
+    split: test
+    license_note: Local research use; image binaries remain gitignored.
+  mmmu:
+    repository: lmms-lab/MMMU
+    version: 364f2e2eb107b36e07ff4c5a15f5947a759cef47
+    split: validation
+    license_note: Pinned LMMs-Lab mirror used by the prior loader cache; images remain gitignored.
+  chartqa:
+    repository: docintel/ChartQA
+    version: 8af361fb04d780e9e73e0ac02f3d48f747ec53c4
+    split: test
+    license_note: Local research use; image binaries remain gitignored.
+  ocr_vqa:
+    repository: pppop7/OCR-VQA
+    version: caf625ea5c5865d494bc19d5be8a52ac3d50d06f
+    split: train
+    license_note: Local research use; book-cover images remain gitignored.
+  bfcl:
+    repository: ShishirPatil/gorilla
+    version: 6ea57973c7a6097fd7c5915698c54c17c5b1b6c8
+    split: BFCL_v4_official_json
+    license_note: Apache-2.0 repository; retain source filename and original BFCL ID.
+
+development:
+  standard:
+    gsm8k: 400
+    commonsenseqa: 300
+    bbh: 300
+    scienceqa: 400
+    mmmu: 200
+    chartqa: 200
+    ocr_vqa: 200
+    bfcl_simple: 500
+    bfcl_multiple: 500
+  hard:
+    gsm8k: 25
+    commonsenseqa: 15
+    bbh: 30
+    scienceqa: 15
+    mmmu: 25
+    chartqa: 15
+    ocr_vqa: 15
+    bfcl_simple: 20
+    bfcl_multiple: 40
+
+test:
+  standard:
+    gsm8k: 80
+    commonsenseqa: 60
+    bbh: 60
+    scienceqa: 80
+    mmmu: 40
+    chartqa: 40
+    ocr_vqa: 40
+    bfcl_simple: 100
+    bfcl_multiple: 100
+  hard:
+    gsm8k: 25
+    commonsenseqa: 15
+    bbh: 30
+    scienceqa: 15
+    mmmu: 25
+    chartqa: 15
+    ocr_vqa: 15
+    bfcl_simple: 20
+    bfcl_multiple: 40
+
+learned_router:
+  model_family: ridge
+  alpha: 0.1
+  tfidf:
+    ngram_range: [1, 2]
+    min_df: 2
+    max_df: 1.0
+    max_features: 1500
+    sublinear_tf: true
+    strip_accents: unicode
+    norm: l2
+  threshold_rule: highest_oof_accuracy_among_non_degenerate_then_lowest_cost_and_strong_rate
+  minimum_strong_rate: 0.05
+  maximum_strong_rate: 0.95
+
+reflection_router:
+  feature_mode: response_only
+  logistic_regression_c: 0.5
+  calibration: sigmoid
+  inner_folds: 3
+  threshold_grid_start: 0.05
+  threshold_grid_stop: 1.0
+  threshold_grid_step: 0.05
+  max_reflection_rounds: 1
+  threshold_rule: highest_oof_accuracy_among_non_degenerate_then_lowest_cost_and_strong_rate
+  minimum_strong_rate: 0.05
+  maximum_strong_rate: 0.95
+
+task_aware_router:
+  risk_threshold: 2.0
+  frozen_from_version: V2
+
+near_duplicate:
+  question_cosine_threshold: 0.95
+  combined_cosine_threshold: 0.98

@@ -1,0 +1,23 @@
+{
+  "configs/v5_large_scale.yaml": "f56bdf105d4045e4ae5674bffc7a93ace2ccbbd2a5d942c1cbf231f8fe1d8957",
+  "configs/models.qwen_v5.yaml": "ab2f1a2825bdb61719f9de0839e3ce2162597df0d912f119c6494633abc7905c",
+  "configs/costs.yaml": "e5fa2e3b8fc2359338867106adc013eb88f1444b60df95f6e139bf77885f1ce2",
+  "data/v5_large/development_manifest.jsonl": "76deb1ead26dfa8b24032f53949c802985f8c30fdb3d0a481a6f2c8b6cefa44d",
+  "src/routerbench_mini/providers.py": "c694aa7a3ce4660ad52b87c28f8d9442a4d8d5399e38f97e0d3eed38cee49ad2",
+  "src/routerbench_mini/scoring.py": "972df99324838d74e43ae64c2cc1344c713814b1e7e2beacc687675bc7cd969c",
+  "src/routerbench_mini/features.py": "cdea0795a084f71e404eca442f9a1dee5f9cd99aac14e339837f3621e271c9ed",
+  "src/routerbench_mini/selection.py": "368ca7df0683c684f5850577671cf5755f7628c732677a6bc46df8db9bee1a8c",
+  "src/routerbench_mini/calibration.py": "d8730abf5ad7a7f12971d1d59b57b6144a2194032ef3522f2bf4e1d90c599606",
+  "src/routerbench_mini/verifiers.py": "65d32a5bc4e968767be9b94128cc41ea0d56d85a27040f27e3a079531e620f7c",
+  "src/routerbench_mini/v5.py": "123cb8e260fbe536d89c1351451005bf8a20591319944bb679e6979604b3d98f",
+  "scripts/run_v5_phase1.py": "2425f91e95d60a02aa5d8790c841a61f64b3decb14af97bce882dcdb9b13a122",
+  "scripts/run_v5_phase2.py": "27f6b56a7957e85cb783bd4787dee2f4065c9e0ad2654653911c52d95de2e93e",
+  "results/qwen3.5-v5-3200-800/frozen/learned_combined.joblib": "05ae4e80242d4bfb731152219959b939abff3cadb2a745507b7f76e804756b50",
+  "results/qwen3.5-v5-3200-800/frozen/learned_structured_only.joblib": "c84344de19fd5f833f7842b12c7fa90aff10da8723cbf8198904887c89bf7975",
+  "results/qwen3.5-v5-3200-800/frozen/learned_text_only.joblib": "3548eabd12317865553858fd0b7af9e22349c892415c35979de94b0b96a89200",
+  "results/qwen3.5-v5-3200-800/frozen/reflection_calibrator.joblib": "71f7f576aaa55c6cc66fe262b640d861297a2ce5d106f9437c9e9da0295d4b11",
+  "results/qwen3.5-v5-3200-800/frozen/prompt_spec.json": "a43fa2b3aa0230b69861c0ce99cfa2517d4f5e1e101feaaf18201be37c235f94",
+  "results/qwen3.5-v5-3200-800/frozen/feature_and_scoring_spec.json": "b698a8801b48407cbf26820780f78b5da23b7813e8c76e6fa1844de99a768cad",
+  "results/qwen3.5-v5-3200-800/frozen/model_config.safe.json": "15aa45912cefa6a0d96ece01c57bd3bcdd187c2bf81cc55300fd17821502d5c5",
+  "results/qwen3.5-v5-3200-800/frozen/selected_parameters.json": "06b9f3b6eb2d60be23f388b9b350e65ab69869828542b509ec65354f297827e4"
+}
