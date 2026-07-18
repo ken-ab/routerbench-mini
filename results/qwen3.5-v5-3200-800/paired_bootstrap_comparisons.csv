@@ -1,0 +1,7 @@
+strategy,baseline,accuracy_difference,ci_low,ci_high,two_sided_p
+learned_combined,task_aware,-0.00125,-0.0125,0.01,0.93
+reflection,task_aware,-0.00125,-0.01875,0.01625,0.9575
+learned_combined,always_strong,-0.0075,-0.01375,-0.0025,0.0085
+reflection,always_strong,-0.0075,-0.025,0.01125,0.451
+learned_combined,learned_text_only,0.0,0.0,0.0,1.0
+learned_combined,learned_structured_only,0.0025,-0.00625,0.0125,0.6955

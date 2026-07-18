@@ -1,0 +1,23 @@
+{
+  "structured_feature_names": [
+    "chart_cue",
+    "choice_count",
+    "has_image",
+    "is_math",
+    "is_multiple_choice",
+    "is_tool",
+    "logic_cue",
+    "numeric_mentions",
+    "ocr_cue",
+    "question_words",
+    "required_arg_count",
+    "schema_depth",
+    "tool_count"
+  ],
+  "structured_feature_count": 13,
+  "quality_gap": "int(strong_correct) - int(cheap_correct)",
+  "scoring_module_sha256": "972df99324838d74e43ae64c2cc1344c713814b1e7e2beacc687675bc7cd969c",
+  "feature_module_sha256": "cdea0795a084f71e404eca442f9a1dee5f9cd99aac14e339837f3621e271c9ed",
+  "task_aware_risk_threshold": 2.0,
+  "task_aware_frozen_from_version": "V2"
+}

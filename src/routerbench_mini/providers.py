@@ -146,6 +146,8 @@ class OpenAICompatibleProvider:
         *,
         timeout_s: int = 120,
         temperature: float = 0.2,
+        top_p: float | None = None,
+        system_prompt: str | None = None,
         max_tokens: int = 256,
         enable_thinking: bool = False,
         cache_dir: str = ".cache/routerbench",
@@ -160,6 +162,8 @@ class OpenAICompatibleProvider:
         self.base_url = base_url.rstrip("/")
         self.timeout_s = timeout_s
         self.temperature = temperature
+        self.top_p = top_p
+        self.system_prompt = system_prompt
         self.max_tokens = max_tokens
         self.enable_thinking = enable_thinking
         self.cache_dir = Path(cache_dir)
@@ -183,16 +187,26 @@ class OpenAICompatibleProvider:
     ) -> ModelResponse:
         cache_path = self._cache_path(task, mode=mode, candidate=candidate)
         if cache_path.exists():
-            return ModelResponse.from_dict(json.loads(cache_path.read_text(encoding="utf-8")))
+            cached = ModelResponse.from_dict(json.loads(cache_path.read_text(encoding="utf-8")))
+            if task.tools and "tool_trace" not in cached.metadata:
+                parsed_tool = normalize_tool_call(cached.answer)
+                cached.metadata["tool_trace"] = [parsed_tool] if parsed_tool is not None else []
+            return cached
 
         prompt = build_prompt(task) if candidate is None else build_review_prompt(task, candidate)
+        messages: list[dict[str, Any]] = []
+        if self.system_prompt:
+            messages.append({"role": "system", "content": self.system_prompt})
+        messages.append({"role": "user", "content": self._content_for_task(task, prompt)})
         payload: dict[str, Any] = {
             "model": self.model,
-            "messages": [{"role": "user", "content": self._content_for_task(task, prompt)}],
+            "messages": messages,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "enable_thinking": self.enable_thinking,
         }
+        if self.top_p is not None:
+            payload["top_p"] = self.top_p
         if task.tools:
             payload["tools"] = [self._openai_tool(tool) for tool in task.tools]
             payload["tool_choice"] = "auto"
@@ -200,13 +214,14 @@ class OpenAICompatibleProvider:
             payload["response_format"] = {"type": "json_object"}
 
         start = time.perf_counter()
-        data = self._request(payload)
+        data, request_attempts = self._request(payload)
         latency_ms = (time.perf_counter() - start) * 1000
         message = data["choices"][0]["message"]
         answer, raw_text, confidence, self_check_pass = self._parse_message(task, message)
         usage = data.get("usage", {})
         cost = self._usage_cost(usage)
         review_changed = candidate is not None and not _answers_equivalent(task, answer, candidate.answer)
+        parsed_tool = normalize_tool_call(answer) if task.tools else None
         result = ModelResponse(
             role=self.role,
             model=self.model,
@@ -220,16 +235,27 @@ class OpenAICompatibleProvider:
                 "currency": self.currency,
                 "self_check_pass": self_check_pass,
                 "prompt_version": PROMPT_VERSION,
+                "system_prompt": self.system_prompt,
+                "temperature": self.temperature,
+                "top_p": self.top_p,
+                "max_tokens": self.max_tokens,
                 "inference_mode": mode,
                 "review_action": "correct" if review_changed else "keep" if candidate is not None else "solve",
                 "review_changed": review_changed,
+                "endpoint": f"{self.base_url}/chat/completions",
+                "api_response_id": data.get("id"),
+                "api_created": data.get("created"),
+                "api_model": data.get("model"),
+                "system_fingerprint": data.get("system_fingerprint"),
+                "request_attempts": request_attempts,
+                "tool_trace": [parsed_tool] if parsed_tool is not None else [],
             },
         )
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         cache_path.write_text(json.dumps(asdict(result), ensure_ascii=False), encoding="utf-8")
         return result
 
-    def _request(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def _request(self, payload: dict[str, Any]) -> tuple[dict[str, Any], int]:
         error: Exception | None = None
         for attempt in range(self.retries):
             try:
@@ -242,7 +268,7 @@ class OpenAICompatibleProvider:
                 if response.status_code == 429 or response.status_code >= 500:
                     raise requests.HTTPError(f"retryable status {response.status_code}", response=response)
                 response.raise_for_status()
-                return response.json()
+                return response.json(), attempt + 1
             except (requests.RequestException, ValueError) as exc:
                 error = exc
                 if attempt + 1 < self.retries:
@@ -328,6 +354,8 @@ class OpenAICompatibleProvider:
             "task": task.to_dict(),
             "candidate_answer": candidate.answer if candidate is not None else None,
             "temperature": self.temperature,
+            "top_p": self.top_p,
+            "system_prompt": self.system_prompt,
             "max_tokens": self.max_tokens,
             "enable_thinking": self.enable_thinking,
         }
@@ -424,6 +452,8 @@ def provider_from_config(role: str, config: dict[str, Any]) -> Provider:
             base_url=base_url,
             timeout_s=int(config.get("timeout_s", 120)),
             temperature=float(config.get("temperature", 0.2)),
+            top_p=float(config["top_p"]) if config.get("top_p") is not None else None,
+            system_prompt=str(config["system_prompt"]) if config.get("system_prompt") else None,
             max_tokens=int(config.get("max_tokens", 256)),
             enable_thinking=bool(config.get("enable_thinking", False)),
             cache_dir=str(config.get("cache_dir", ".cache/routerbench")),

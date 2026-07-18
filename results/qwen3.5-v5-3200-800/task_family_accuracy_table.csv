@@ -1,0 +1,13 @@
+strategy,display_name,text,vision,tool
+always_cheap,Always Cheap,0.51481481,0.73333333,0.80384615
+always_strong,Always Strong,0.58888889,0.75925926,0.83846154
+global_oracle,Global Oracle,0.64814815,0.7962963,0.84615385
+learned_combined,Learned Combined,0.57407407,0.75925926,0.83076923
+learned_structured_only,Learned Structured-only,0.58888889,0.75185185,0.81538462
+learned_text_only,Learned Text-only,0.57407407,0.75925926,0.83076923
+oracle_learned_rate,Oracle@Learned Rate,0.64814815,0.7962963,0.84615385
+oracle_reflection_rate,Oracle@Reflection Rate,0.61851852,0.78888889,0.80384615
+random_learned_rate,Random@Learned Rate,0.5853333342,0.7574814829,0.8369230759
+random_reflection_rate,Random@Reflection Rate,0.5643703702,0.7588888894,0.8010384605
+reflection,Reflection,0.58888889,0.77037037,0.80384615
+task_aware,Frozen Task-Aware,0.57777778,0.76666667,0.82307692

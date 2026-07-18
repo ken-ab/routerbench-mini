@@ -1,0 +1,91 @@
+{
+  "study_version": "V5-3200-800",
+  "phase": "development_training_and_freeze_complete",
+  "started_at": "2026-07-17T11:17:26.379071+00:00",
+  "completed_at": "2026-07-17T11:30:55.241737+00:00",
+  "development_examples": 3200,
+  "development_manifest_sha256": "76deb1ead26dfa8b24032f53949c802985f8c30fdb3d0a481a6f2c8b6cefa44d",
+  "frozen_test_manifest_sha256": "c27c996cd543d432bd00dcba7b4615013cca88db5693a5b9094911c0e8e63d39",
+  "test_examples_used_in_phase1": 0,
+  "test_predictions_generated_in_phase1": 0,
+  "phase2_permitted": true,
+  "freeze_inventory_sha256": "da8b0396a52a7970bd6956fcbcbd8b2301d4e79b37adb821c2ffd1cc326005c1",
+  "protocol_config_sha256": "f56bdf105d4045e4ae5674bffc7a93ace2ccbbd2a5d942c1cbf231f8fe1d8957",
+  "model_config_sha256": "ab2f1a2825bdb61719f9de0839e3ce2162597df0d912f119c6494633abc7905c",
+  "cost_config_sha256": "e5fa2e3b8fc2359338867106adc013eb88f1444b60df95f6e139bf77885f1ce2",
+  "git": {
+    "branch": "main",
+    "commit": "a9db8efc141682a3bd7db60080b39850bdeccbb8",
+    "dirty": true,
+    "working_tree_diff_sha256": "0f3a9e98cde7ec373c5b57689d65b76c9d9f55b50bfe18d06b5c973162a94d5e"
+  },
+  "runtime": {
+    "python": "3.12.13",
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "packages": {
+      "numpy": "2.5.1",
+      "scipy": "1.18.0",
+      "scikit-learn": "1.9.0",
+      "joblib": "1.5.3",
+      "requests": "2.34.2",
+      "pyyaml": "6.0.3"
+    }
+  },
+  "models": {
+    "cheap": {
+      "model": "qwen3.5-35b-a3b",
+      "role": "cheap",
+      "temperature": 0.2,
+      "top_p": 0.8,
+      "max_tokens": 256,
+      "timeout_s": 120,
+      "retries": 4,
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    },
+    "strong": {
+      "model": "qwen3.5-397b-a17b",
+      "role": "strong",
+      "temperature": 0.2,
+      "top_p": 0.8,
+      "max_tokens": 256,
+      "timeout_s": 120,
+      "retries": 4,
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    }
+  },
+  "development_api_totals": {
+    "cheap_solve": {
+      "logical_calls": 3200,
+      "request_attempts": 3200,
+      "prompt_tokens": 1469736,
+      "completion_tokens": 98072,
+      "total_tokens": 1567808,
+      "estimated_cost": 0.9017248,
+      "observed_latency_ms": 2252798.44
+    },
+    "strong_solve": {
+      "logical_calls": 3200,
+      "request_attempts": 3207,
+      "prompt_tokens": 1469736,
+      "completion_tokens": 97811,
+      "total_tokens": 1567547,
+      "estimated_cost": 2.4679224,
+      "observed_latency_ms": 4060755.18
+    },
+    "strong_review": {
+      "logical_calls": 3200,
+      "request_attempts": 3870,
+      "prompt_tokens": 1629397,
+      "completion_tokens": 110589,
+      "total_tokens": 1739986,
+      "estimated_cost": 2.7515172,
+      "observed_latency_ms": 5225007.38
+    }
+  },
+  "selected_thresholds": {
+    "learned_text_only": -0.27538991425293924,
+    "learned_structured_only": -0.0028373507836566315,
+    "learned_combined": -0.3086174230926812,
+    "reflection": 0.75
+  }
+}

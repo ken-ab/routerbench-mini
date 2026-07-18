@@ -1,0 +1,8 @@
+{
+  "protocol_config": "99ef53bde8125433f6139f01ce86ed3d8e2c534c74602fc3ae5497ccf4066317",
+  "development_manifest": "76deb1ead26dfa8b24032f53949c802985f8c30fdb3d0a481a6f2c8b6cefa44d",
+  "test_manifest": "c27c996cd543d432bd00dcba7b4615013cca88db5693a5b9094911c0e8e63d39",
+  "prompt_version": "unified-multimodal-v2-review-correct",
+  "development_examples": 3200,
+  "test_examples": 800
+}
