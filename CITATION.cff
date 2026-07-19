@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use RouterBench-Mini, please cite this repository."
+title: "RouterBench-Mini: Cost-Aware Model Reuse for Multimodal Agents"
+type: software
+authors:
+  - family-names: Zhang
+    given-names: Zhenkai
+    alias: Ken
+repository-code: "https://github.com/ken-ab/routerbench-mini"
+url: "https://github.com/ken-ab/routerbench-mini"
+version: 0.1.0
+date-released: 2026-07-19
+keywords:
+  - model routing
+  - multimodal agents
+  - efficient AI
+  - reproducible benchmark

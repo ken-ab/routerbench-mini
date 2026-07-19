@@ -2,9 +2,25 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-This is a small personal experimental report that cannot independently support a paper contribution. It documents one step in my transition from engineering practice back toward research. The root README now presents only the latest V5 frozen evaluation; the designs, results, and failure analyses from V1 through V4 remain available in the [version index](#version-index).
+[![CI](https://github.com/ken-ab/routerbench-mini/actions/workflows/ci.yml/badge.svg)](https://github.com/ken-ab/routerbench-mini/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB.svg)](https://www.python.org/)
+
+RouterBench-Mini is an independent, reproducible study of cost-aware model routing. It does not claim a new routing algorithm; instead, it provides a controlled comparison of fixed-model baselines, rule-based routing, learned routing, and post-response Reflection under a shared evaluation protocol. The root README presents the latest V5 frozen evaluation, while the designs and failure analyses from V1 through V4 remain in the [version index](#version-index).
 
 RouterBench-Mini studies a model-selection question: **when is a cheaper model sufficient, and when does a stronger model provide enough quality gain to justify its cost?** V5 compares fixed-model baselines, rule-based routing, learned routing, and post-response Reflection under the same Qwen 3.5 multimodal model family, prompts, decoding settings, and deterministic scoring.
+
+## Result at a glance
+
+V5 uses 3,200 development examples and a frozen 800-example test set spanning text, vision, and tool use. The best cost-aware policy in this study is the frozen Task-Aware router:
+
+| Frozen test result | Always Strong | Task-Aware | Difference |
+|---|---:|---:|---:|
+| Accuracy | 72.75% | 72.12% | -0.63 pp |
+| Average cost | 0.00079930 CNY | 0.00068789 CNY | **-13.94%** |
+| Average latency | 1,318.2 ms | 1,133.6 ms | **-14.01%** |
+| Strong-model use | 100.00% | 69.88% | -30.12 pp |
+
+The accuracy difference is five answers out of 800 and is not statistically significant under the paired analysis reported below. All frozen manifests, configurations, per-example predictions, analysis scripts, protocol tests, and CI are included for inspection and reproduction.
 
 ## V5 Experimental Design
 
